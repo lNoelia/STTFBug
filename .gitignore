@@ -1,0 +1,5 @@
+# Configuración personal de Visual Studio Code
+.vscode/
+
+# Carpeta de compilación de Maven
+/target/
