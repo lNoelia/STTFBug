@@ -2,4 +2,4 @@
 .vscode/
 
 # Carpeta de compilación de Maven
-/target/
+STTFBug/target/
