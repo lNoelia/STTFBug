@@ -3,3 +3,5 @@
 
 # Carpeta de compilación de Maven
 STTFBug/target/
+#Contenido de la carpeta de resources
+STTFBug/resources/*
