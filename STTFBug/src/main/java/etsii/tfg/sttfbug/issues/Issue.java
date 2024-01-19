@@ -1,6 +1,11 @@
 package etsii.tfg.sttfbug.issues;
 
-import java.sql.Date;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.Date;
 
 public class Issue {
     private String title;
@@ -8,7 +13,7 @@ public class Issue {
     private Date startDate;
     private Date endDate;
     private String asignee;
-
+     
     public String getTitle() {
         return title;
     }
@@ -71,5 +76,38 @@ public class Issue {
             return false;
         return true;
     }
-    
+    public void setTitle(String title) {
+        this.title = title;
+    }
+    public void setDescription(String description) {
+        this.description = description;
+    }
+    public void setStartDate(String startDate) {
+       this.startDate = convertDate(startDate);
+    }
+    public void setEndDate(String endDate) {
+        this.endDate = convertDate(endDate);
+    }
+    public void setAsignee(String asignee) {
+        this.asignee = asignee;
+    }
+
+    public Date convertDate(String strDate){
+        Date date = null;
+        SimpleDateFormat formatoFecha = new SimpleDateFormat("yyyy-MM-dd HH:mm z");
+        try {
+            date = formatoFecha.parse(strDate);
+            LocalDateTime localDateTime = LocalDateTime.ofInstant(date.toInstant(), ZoneId.of("America/New_York"));
+            ZonedDateTime dateUTC = ZonedDateTime.of(localDateTime, ZoneId.of("UTC"));
+            date= Date.from(dateUTC.toInstant());
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return date;
+    }
+    @Override
+    public String toString() {
+        return "Issue [title=" + title + ", description=" + description + ", startDate=" + startDate + ", endDate="
+                + endDate + ", asignee=" + asignee + "]";
+    }
 }
