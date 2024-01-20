@@ -8,13 +8,12 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.jsoup.*;
 import org.jsoup.nodes.*;
-import org.jsoup.select.Elements;
 
 public class WebScraper{
     private static final String MAIN_URL = "https://bugs.eclipse.org/bugs/report.cgi?x_axis_field=resolution&y_axis_field=bug_status&z_axis_field=&width=600&height=350&action=wrap&format=table&product=Platform";
-    private static final String LRF_FILE_PATH = "STTFBug/resources/LRF.csv";//File with a list of resolved and fixed issues
-    private static final String LVF_FILE_PATH = "STTFBug/resources/LVF.csv";//File with a list of verified and fixed issues
-    private static final String LCF_FILE_PATH = "STTFBug/resources/LCF.csv";//File with a list of closed and fixed issues
+    private static final String LRF_FILE_PATH = "resources/LRF.csv";//File with a list of resolved and fixed issues
+    private static final String LVF_FILE_PATH = "resources/LVF.csv";//File with a list of verified and fixed issues
+    private static final String LCF_FILE_PATH = "resources/LCF.csv";//File with a list of closed and fixed issues
     private static final List<String> lfiles= List.of(LRF_FILE_PATH,LVF_FILE_PATH,LCF_FILE_PATH);
     private static final String ISSUES_URL = "https://bugs.eclipse.org/bugs/show_bug.cgi?id=";
     private static final String ISSUE_HISTORY_URL = "https://bugs.eclipse.org/bugs/show_activity.cgi?id=";
@@ -29,13 +28,13 @@ public class WebScraper{
             Document doc = Jsoup.connect(MAIN_URL).get();
                 switch (f) {
                     case LRF_FILE_PATH:
-                        getResolvedIssuesDocument(doc);
+                        getIssuesDocument(doc, LRF_FILE_PATH, 4, 2);// 4 = Resolved, 2 = Fixed
                         break;
                     case LVF_FILE_PATH:
-                        getVerifiedIssuesDocument(doc);
+                        getIssuesDocument(doc,LVF_FILE_PATH, 5, 2);// 5 = Verified, 2 = Fixed
                         break;
                     case LCF_FILE_PATH:
-                        getClosedIssuesDocument(doc);
+                        getIssuesDocument(doc, LCF_FILE_PATH, 6, 2);// 6 = Closed, 2 = Fixed
                         break;
                     default:
                         break;
@@ -45,36 +44,17 @@ public class WebScraper{
     }
     /**
      * @param doc Document of the Report: Status/Solution page 
+     * @param path Path where the .csv file will be saved
+     * @param row Row of the table where the url to the list of issues is located
+     * @param column Column of the table where the url to the list of issues is located
      */
-    private static void getResolvedIssuesDocument(Document doc){
-        //Documents.getElementById is not able to search for an ID inside of a table, so we are going to do it step-by-step
-        Element table = doc.selectFirst("table").selectFirst("table").select("tbody").get(1);
-        Element resolvedFixedCell = table.select("tr").get(4).select("td").get(2);//4=Resolved ,2=Fixed
+    private static void getIssuesDocument(Document doc, String path, Integer row , Integer column){
+        Element table = doc.selectFirst("div div table table tbody");
+        Element resolvedFixedCell = table.select("tr").get(row).select("td").get(column);
         String auxLink = resolvedFixedCell.selectFirst("a").attr("abs:href");
         Document auxDoc = tryConnection(auxLink);
         String link = auxDoc.getElementsByClass("buglist_menu").first().getElementsByClass("bz_query_links").first().selectFirst("a").attr("abs:href");
-        String downloadPath = LRF_FILE_PATH;
-        downloadCSV(link, downloadPath);
-    }
-        // TO-DO group this 3 methods into one.
-    private static void getVerifiedIssuesDocument(Document doc){
-        Element table = doc.selectFirst("table").selectFirst("table").select("tbody").get(1);
-        Element verifiedFixedCell = table.select("tr").get(5).select("td").get(2);//5=Resolved ,2=Fixed
-        String auxLink = verifiedFixedCell.selectFirst("a").attr("abs:href");
-        Document auxDoc = tryConnection(auxLink);
-        String link = auxDoc.getElementsByClass("buglist_menu").first().getElementsByClass("bz_query_links").first().selectFirst("a").attr("abs:href");      
-        String downloadPath = LVF_FILE_PATH;
-        downloadCSV(link, downloadPath);
-    }
-
-    private static void getClosedIssuesDocument(Document doc){
-        Element table = doc.selectFirst("table").selectFirst("table").select("tbody").get(1);
-        Element closedFixedCell = table.select("tr").get(6).select("td").get(2);//6=Closed ,2=Fixed
-        String auxLink = closedFixedCell.selectFirst("a").attr("abs:href");
-        Document auxDoc = tryConnection(auxLink);
-        String link = auxDoc.getElementsByClass("buglist_menu").first().getElementsByClass("bz_query_links").first().selectFirst("a").attr("abs:href");      
-        String downloadPath = LCF_FILE_PATH;
-        downloadCSV(link, downloadPath);
+        downloadCSV(link, path);
     }
 
     private static void downloadCSV(String url, String path){
@@ -87,8 +67,7 @@ public class WebScraper{
     }
     private static Document tryConnection(String link){
         try{
-            //On the connection we will use a timeout of 90 second because when we are loading the resolved issues, we are loading more than 37k issues
-            return Jsoup.connect(link).timeout(90*1000).get();
+            return Jsoup.connect(link).timeout(60*1000).get();
         } catch (IOException e) {
             System.err.println("No se pudo conectar a " + link + ": " + e.getMessage());
             return new Document("");
@@ -119,11 +98,7 @@ public class WebScraper{
     //         }
     //     }
     // }
-    public static void main(String[] args) {
-        TESTListAllIssues();
-    }
-    public static void TESTListAllIssues(){
-        
+    public static void testListAllIssues(){
         try{
             List<String> lines = Files.readAllLines(new File(LRF_FILE_PATH).toPath());
             String line = lines.get(1);
