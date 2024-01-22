@@ -1,43 +1,75 @@
 package etsii.tfg.sttfbug.issues;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Date;
+import java.time.format.DateTimeFormatter;
 
 public class Issue {
     private String title;
+    private Integer id;
     private String description;
-    private Date startDate;
-    private Date endDate;
-    private String asignee;
-     
+    private ZonedDateTime startDate;
+    private ZonedDateTime endDate;
+    private String assignee;
+    
+    public Integer getId() {
+        return id;
+    }
     public String getTitle() {
         return title;
     }
     public String getDescription() {
         return description;
     }
-    public Date getStartDate() {
+    public ZonedDateTime getStartDate() {
         return startDate;
     }
-    public Date getEndDate() {
+    public ZonedDateTime getEndDate() {
         return endDate;
     }
-    public String getAsignee() {
-        return asignee;
+    public String getAssignee() {
+        return assignee;
     }
+    public void setTitle(String title) {
+        this.title = title;
+    }
+    public void setDescription(String description) {
+        this.description = description;
+    }
+    public void setStartDateStr(String startDate) {
+       this.startDate = convertDate(startDate);
+    }
+    public void setStartDate(ZonedDateTime startDate) {
+        this.startDate = startDate;
+    }
+    public void setEndDate(ZonedDateTime endDate) {
+        this.endDate = endDate;
+    }
+    public void setAssignee(String asignee) {
+        this.assignee = asignee;
+    }
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public ZonedDateTime convertDate(String strDate){
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm z");
+        LocalDateTime date = LocalDateTime.parse(strDate, formatter);
+        ZoneId zoneNY = ZoneId.of("America/New_York");
+        return ZonedDateTime.of(date, zoneNY);
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
         result = prime * result + ((title == null) ? 0 : title.hashCode());
+        result = prime * result + ((id == null) ? 0 : id.hashCode());
         result = prime * result + ((description == null) ? 0 : description.hashCode());
         result = prime * result + ((startDate == null) ? 0 : startDate.hashCode());
         result = prime * result + ((endDate == null) ? 0 : endDate.hashCode());
-        result = prime * result + ((asignee == null) ? 0 : asignee.hashCode());
+        result = prime * result + ((assignee == null) ? 0 : assignee.hashCode());
         return result;
     }
     @Override
@@ -54,6 +86,11 @@ public class Issue {
                 return false;
         } else if (!title.equals(other.title))
             return false;
+        if (id == null) {
+            if (other.id != null)
+                return false;
+        } else if (!id.equals(other.id))
+            return false;
         if (description == null) {
             if (other.description != null)
                 return false;
@@ -69,45 +106,19 @@ public class Issue {
                 return false;
         } else if (!endDate.equals(other.endDate))
             return false;
-        if (asignee == null) {
-            if (other.asignee != null)
+        if (assignee == null) {
+            if (other.assignee != null)
                 return false;
-        } else if (!asignee.equals(other.asignee))
+        } else if (!assignee.equals(other.assignee))
             return false;
         return true;
     }
-    public void setTitle(String title) {
-        this.title = title;
-    }
-    public void setDescription(String description) {
-        this.description = description;
-    }
-    public void setStartDate(String startDate) {
-       this.startDate = convertDate(startDate);
-    }
-    public void setEndDate(String endDate) {
-        this.endDate = convertDate(endDate);
-    }
-    public void setAsignee(String asignee) {
-        this.asignee = asignee;
-    }
+        @Override
+        public String toString() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm z");
 
-    public Date convertDate(String strDate){
-        Date date = null;
-        SimpleDateFormat formatoFecha = new SimpleDateFormat("yyyy-MM-dd HH:mm z");
-        try {
-            date = formatoFecha.parse(strDate);
-            LocalDateTime localDateTime = LocalDateTime.ofInstant(date.toInstant(), ZoneId.of("America/New_York"));
-            ZonedDateTime dateUTC = ZonedDateTime.of(localDateTime, ZoneId.of("UTC"));
-            date= Date.from(dateUTC.toInstant());
-        } catch (ParseException e) {
-            e.printStackTrace();
+        return "Issue [title=" + title + ", id=" + id + ", description=" + description + ", startDate=" + (startDate != null ? startDate.format(formatter) : null)
+            + ", endDate=" + (endDate != null ? endDate.format(formatter) : null) + ", assignee=" + assignee + "]";
         }
-        return date;
-    }
-    @Override
-    public String toString() {
-        return "Issue [title=" + title + ", description=" + description + ", startDate=" + startDate + ", endDate="
-                + endDate + ", asignee=" + asignee + "]";
-    }
+    
 }
