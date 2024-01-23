@@ -24,7 +24,7 @@ public class Application {
                     } catch (IOException e) {
                         e.printStackTrace();
                     } break;
-                case 2: WebScraper.testListAllIssues(); break;
+                case 2: WebScraper.getListAllIssues(); break;
                 default: throw new IllegalArgumentException("Unexpected value: " + actionSelected);
             }
         }
