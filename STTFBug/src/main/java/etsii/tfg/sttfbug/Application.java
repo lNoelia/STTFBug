@@ -24,6 +24,7 @@ public class Application {
                     } catch (IOException e) {
                         e.printStackTrace();
                     } break;
+                case 2: WebScraper.getListAllIssues(); break;
                 default: throw new IllegalArgumentException("Unexpected value: " + actionSelected);
             }
         }
@@ -58,5 +59,4 @@ public class Application {
         .sorted(Comparator.comparing(Map.Entry::getKey))
         .forEach(entry -> System.out.println(entry.getKey()+" "+entry.getValue()));
     }
-    
 }
