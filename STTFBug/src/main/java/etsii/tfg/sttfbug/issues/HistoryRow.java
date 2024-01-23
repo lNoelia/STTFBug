@@ -5,20 +5,15 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class HistoryRow {
-    private static final AtomicInteger count = new AtomicInteger(0); 
-
-    private final String id;
     private final String who;
     private final ZonedDateTime when;
     private final String what;
     private final String removed;
     private final String added;
 
-    public HistoryRow(List<String> cells, String issueID) {
-        this.id = issueID+"-"+count.incrementAndGet();
+    public HistoryRow(List<String> cells) {
         this.who = cells.get(0);
         this.when = convertDate(cells.get(1));
         this.what = cells.get(2);
@@ -26,8 +21,7 @@ public class HistoryRow {
         this.added = cells.get(4);
     }
 
-    public HistoryRow(List<String> cells, String issueID, String who, ZonedDateTime when) {
-        this.id = issueID+"-"+count.incrementAndGet();
+    public HistoryRow(List<String> cells, String who, ZonedDateTime when) {
         this.who = who;
         this.when = when; //In this case, we dont need to convert the Date, cause we know it has already been converted See: WebScrapper.java (calculateEndDate)
         this.what = cells.get(0);
@@ -50,15 +44,10 @@ public class HistoryRow {
     public String getAdded() {
         return added;
     }
-    public String getId() {
-        return id;
-    }
-
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((id == null) ? 0 : id.hashCode());
         result = prime * result + ((who == null) ? 0 : who.hashCode());
         result = prime * result + ((when == null) ? 0 : when.hashCode());
         result = prime * result + ((what == null) ? 0 : what.hashCode());
@@ -76,11 +65,6 @@ public class HistoryRow {
         if (getClass() != obj.getClass())
             return false;
         HistoryRow other = (HistoryRow) obj;
-        if (id == null) {
-            if (other.id != null)
-                return false;
-        } else if (!id.equals(other.id))
-            return false;
         if (who == null) {
             if (other.who != null)
                 return false;
