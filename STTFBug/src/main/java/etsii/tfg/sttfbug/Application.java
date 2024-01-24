@@ -32,8 +32,8 @@ public class Application {
     private static Integer selectValue(Scanner scanner){
         Map<Integer,String> validValues = Map.of(0,"-> Stop execution",
         1,"-> Obtain a .csv file with the list of issues",
-        2,"-> Use the .csv files obtained to get the issues",
-        3,"-> This is a preview text");
+        2,"-> Use the .csv files obtained in method 1 to get a filtered csv file with the needed information about the issues",
+        3,"-> Use the filtered csv file to ... #WorkInProgress");
         System.out.printf("Select one of the following values: %n");
         printValidValues(validValues);
         Integer actionInteger;

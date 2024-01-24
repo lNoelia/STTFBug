@@ -1,5 +1,6 @@
 package etsii.tfg.sttfbug.issues;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -127,5 +128,9 @@ public class Issue {
     
     private static String cleanText(String text) {
         return text.replaceAll("\\r?\\n", " ");
+    }
+
+    public Long getTimeSpent(){
+        return Duration.between(startDate, endDate).toMinutes();
     }
 }

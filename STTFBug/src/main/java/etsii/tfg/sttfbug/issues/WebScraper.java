@@ -24,7 +24,7 @@ public class WebScraper{
     private static final String ISSUES_URL = "https://bugs.eclipse.org/bugs/show_bug.cgi?id=";
     private static final String ISSUE_HISTORY_URL = "https://bugs.eclipse.org/bugs/show_activity.cgi?id=";
     private static final String FILTERED_ISSUES_FILE ="resources/FILTERED_ISSUES.csv";
-    private static final Integer NUMBER_OF_ISSUES = 10;
+    private static final Integer NUMBER_OF_ISSUES = 10000;
 
     /**
      * @return Creates 3 different .csv files with the list of issues that are fixed and resolved(LRF), verified(LVF) or closed(LCF).
@@ -50,6 +50,65 @@ public class WebScraper{
     
         }
     }
+    
+    /**
+     * Creates a .csv file with a list of issues with the information we need for the TTF estimator. 
+     */
+    public static void getListAllIssues(){
+        List<Issue> issuesList = new ArrayList<>();
+        boolean stop = false;
+        for (String filePath : lfiles) {//We iterate through the 3 files
+            if(stop){
+                break;
+            }
+            try{
+                List<String> lines = Files.readAllLines(new File(filePath).toPath());
+                lines.remove(0);//Header line
+                System.out.println("Generating CSV file");
+                for(String line : lines){
+                    String id = line.split(",")[0];
+                    String link = ISSUES_URL + id;
+                    Document doc = tryConnection(link);
+                    Issue issue = getIssue(doc, id);
+                    System.out.println("Issue añadida: " + id);
+                    issuesList.add(issue);
+                    if(issuesList.size() == NUMBER_OF_ISSUES){//Stop condition for development purposes
+                        stop = true;
+                        break;
+                    }
+                }         
+            } catch (IOException e) {
+                System.err.println("An error has occured while reading the file: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+        System.out.println("Issues list size: " + issuesList.size());
+        List<Issue> filteredIssues = filterIssues(issuesList);
+        System.out.println("Filtered issues list size: " + filteredIssues.size());
+        writeCSV(filteredIssues,FILTERED_ISSUES_FILE); 
+    }
+
+    private static void writeCSV(List<Issue> issues, String path){
+        String csvFilePath = path;
+        try (CSVWriter writer = new CSVWriter(new FileWriter(csvFilePath), ',', '"', '"', "\r\n")){
+            String[] header = {"ID", "Title", "Description", "Start Date", "End Date", "Assignee"};
+            writer.writeNext(header);
+            for (Issue issue : issues) {
+                String[] data = {
+                    String.valueOf(issue.getId()),
+                    issue.getTitle(),
+                    issue.getDescription(),
+                    issue.getStartDatetoString(),
+                    issue.getEndDatetoString(),
+                    issue.getAssignee()
+                };
+                writer.writeNext(data);
+            }
+            System.out.println("CSV file created at: " + csvFilePath);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
     /**
      * @param doc Document of the Report: Status/Solution page 
      * @param path Path where the .csv file will be saved
@@ -65,6 +124,7 @@ public class WebScraper{
         downloadCSV(link, path);
     }
 
+    
     private static void downloadCSV(String url, String path){
         try {
             FileUtils.copyURLToFile(new URL(url), new File(path), 90*1000, 90*1000);
@@ -73,6 +133,7 @@ public class WebScraper{
             e.printStackTrace();
         }
     }
+
     private static Document tryConnection(String link){
         try{
             return Jsoup.connect(link).timeout(60*1000).get();
@@ -81,60 +142,12 @@ public class WebScraper{
             return new Document("");
         }
     }
-
     
-    public static void getListAllIssues(){
-        List<Issue> issues = new ArrayList<>();
-        boolean stop = false;
-        for (String filePath : lfiles) {//for each file
-            if(stop){
-                break;
-            }
-            try{
-                List<String> lines = Files.readAllLines(new File(filePath).toPath());
-                lines.remove(0);//Header line
-                for(String line : lines){
-                    String id = line.split(",")[0];
-                    String link = ISSUES_URL + id;
-                    Document doc = tryConnection(link);
-                    Issue issue = getIssue(doc, id);
-                    issues.add(issue);
-                    System.out.println(issue);
-                    if(issues.size() == NUMBER_OF_ISSUES){//Stop condition for development purposes
-                        stop = true;
-                        break;
-                    }
-                }    
-                writeCSV(issues);       
-            } catch (IOException e) {
-                System.err.println("An error has occured while reading the file: " + e.getMessage());
-                e.printStackTrace();
-            }
-        }
-    }
-    public static void testListAllIssues(){
-        try{
-            List<String> lines = Files.readAllLines(new File(LRF_FILE_PATH).toPath());
-            List<Issue> issues = new ArrayList<>();
-            lines.remove(0);//Header line
-            for(String line : lines){
-                String id = line.split(",")[0];
-                String link = ISSUES_URL + id;
-                Document doc = tryConnection(link);
-                Issue issue = getIssue(doc, id);
-                issues.add(issue);
-                System.out.println(issue);
-                if(issues.size() == NUMBER_OF_ISSUES){
-                    break;
-                }
-            }    
-            writeCSV(issues);       
-        } catch (IOException e) {
-            System.err.println("An error has occured while reading the file: " + e.getMessage());
-            e.printStackTrace();
-        }
-        
-    }
+    /**
+     * @param issue Issue object with the information we need for the TTF estimator
+     * @param historyDoc JSoup Document of the issue history page
+     * @return The same issue object with the end date calculated and the start date reviewed
+     */
     private static Issue calculateEndDate(Issue issue, Document historyDoc){
         Elements historyTableRows = historyDoc.select("div table tbody tr");
         historyTableRows.remove(0);//Header row
@@ -157,17 +170,17 @@ public class WebScraper{
                 history.add(historyRow);
             }
         }
-        List<HistoryRow> lResolutionFixed = new ArrayList<>(); //Auxiliar list to store the historyRows that have the resolution set to fixed
-        for(HistoryRow historyRow : history){
-            if(historyRow.getWhat().equals("Resolution") && historyRow.getAdded().equals("FIXED")){ //If the resolution is set to fixed
-                  lResolutionFixed.add(historyRow); //we add the rows when the resolution attribute changed to fixed
+        List<HistoryRow> lResolutionFixed = new ArrayList<>();
+        for(HistoryRow historyRow : history){ // Select the rows where the resolution attribute changed to fixed
+            if(historyRow.getWhat().equals("Resolution") && historyRow.getAdded().equals("FIXED")){
+                  lResolutionFixed.add(historyRow);
             }
         }
         if(lResolutionFixed.size()==1){//if there's only one time where the issue was set to fixed, that's it's end date
             HistoryRow rowFixed = lResolutionFixed.get(0);
             issue.setEndDate(rowFixed.getWhen());
             issue = reviewStartDate(issue, history, rowFixed);
-        }else if(lResolutionFixed.isEmpty()){//if there's the issue was never set to fixed, we set the end date to null so we can discard it
+        }else if(lResolutionFixed.isEmpty()){//if the issue was never set to fixed, we set the end date to null so we can discard it
             issue.setEndDate(null);
         }else{// REVIEW THIS PART
             HistoryRow lastChange = lResolutionFixed.get(lResolutionFixed.size()-1);
@@ -176,6 +189,14 @@ public class WebScraper{
         }
         return issue;
     }
+
+    /**
+     * Auxiliar method to review the start date of an issue
+     * @param issue issue object with the information we need for the TTF estimator
+     * @param history List of historyRows of the issue (changes made on the issue report)
+     * @param rowFixed HistoryRow where the resolution was set to fixed
+     * @return The same issue object with the start date reviewed 
+     */
     private static Issue reviewStartDate(Issue issue, List<HistoryRow> history, HistoryRow rowFixed) {
         ZonedDateTime auxstartDate = issue.getStartDate();
         List<HistoryRow> lAssigneeChanged = new ArrayList<>();//Auxiliar list with the historyRows where the asignee changed
@@ -184,7 +205,7 @@ public class WebScraper{
                 lAssigneeChanged.add(historyRow);
             }
         }
-        if (lAssigneeChanged.isEmpty()) {//If the assignee is the same as stated on the main page, then the start date is correct
+        if (lAssigneeChanged.isEmpty()) {//If the assignee was never changed, then the start date is correct
             return issue;
         }else{
             for(HistoryRow assigneeRow : lAssigneeChanged){//We iterate through the list of assignee changes to get the correct start date
@@ -197,6 +218,12 @@ public class WebScraper{
         }
         
     }
+
+    /**
+     * @param doc JSoup Document of the issue page
+     * @param id  ID of the issue
+     * @return Issue object with the information we need for the TTF estimator
+     */
     private static Issue getIssue(Document doc, String id){
         Issue issue = new Issue();
         Element formElement = doc.getElementById("changeform"); // Central form that contains all the information
@@ -221,32 +248,24 @@ public class WebScraper{
         issue.setAssignee(assignee);
         // End date 
         String historyURL = ISSUE_HISTORY_URL + id;
-        // Since this attribute is not as easy to get, we are going to use the method setHistory to get it.
         issue = calculateEndDate(issue, tryConnection(historyURL));
-        
         return issue;
     }
 
-    public static void writeCSV(List<Issue> issues){
-        String csvFilePath = FILTERED_ISSUES_FILE;
-        try (CSVWriter writer = new CSVWriter(new FileWriter(csvFilePath), ',', '"', '"', "\r\n")){
-            String[] header = {"ID", "Title", "Description", "Start Date", "End Date", "Assignee"};
-            writer.writeNext(header);
-            for (Issue issue : issues) {
-                String[] data = {
-                    String.valueOf(issue.getId()),
-                    issue.getTitle(),
-                    issue.getDescription(),
-                    issue.getStartDatetoString(),
-                    issue.getEndDatetoString(),
-                    issue.getAssignee()
-                };
-                writer.writeNext(data);
+    private static List<Issue> filterIssues(List<Issue> issues){
+        List<Issue> filteredIssues = new ArrayList<>();
+        for(Issue issue : issues){
+            if(issue.getId()!=null && issue.getTitle()!=null && issue.getDescription()!=null 
+            && issue.getStartDate()!=null && issue.getEndDate()!=null && issue.getAssignee()!=null 
+            && isAValidTime(issue)){
+                filteredIssues.add(issue);
             }
-            System.out.println("CSV file created at: " + csvFilePath);
-        } catch (IOException e) {
-            e.printStackTrace();
         }
+        return filteredIssues;
     }
 
+    private static boolean isAValidTime(Issue issue){
+        return issue.getStartDate().compareTo(issue.getEndDate()) < 0 && issue.getEndDate().compareTo(ZonedDateTime.now()) < 0 
+            && issue.getTimeSpent() > 60;
+    }
 }
