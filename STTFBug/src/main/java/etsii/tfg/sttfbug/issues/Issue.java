@@ -12,7 +12,6 @@ public class Issue {
     private String description;
     private ZonedDateTime startDate;
     private ZonedDateTime endDate;
-    private String assignee;
 
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm z");
     
@@ -37,9 +36,6 @@ public class Issue {
     public String getEndDatetoString() {
         return endDate.format(formatter);
     }
-    public String getAssignee() {
-        return assignee;
-    }
     public void setTitle(String title) {
         this.title = cleanText(title);
     }
@@ -54,9 +50,6 @@ public class Issue {
     }
     public void setEndDate(ZonedDateTime endDate) {
         this.endDate = endDate;
-    }
-    public void setAssignee(String asignee) {
-        this.assignee = asignee;
     }
     public void setId(Integer id) {
         this.id = id;
@@ -76,7 +69,6 @@ public class Issue {
         result = prime * result + ((description == null) ? 0 : description.hashCode());
         result = prime * result + ((startDate == null) ? 0 : startDate.hashCode());
         result = prime * result + ((endDate == null) ? 0 : endDate.hashCode());
-        result = prime * result + ((assignee == null) ? 0 : assignee.hashCode());
         return result;
     }
     @Override
@@ -113,17 +105,12 @@ public class Issue {
                 return false;
         } else if (!endDate.equals(other.endDate))
             return false;
-        if (assignee == null) {
-            if (other.assignee != null)
-                return false;
-        } else if (!assignee.equals(other.assignee))
-            return false;
         return true;
     }
     @Override
     public String toString() {
         return "Issue [id=" + id + ", title=" + title + ", description=" + description + ", startDate=" + (startDate != null ? startDate.format(formatter) : null)
-        + ", endDate=" + (endDate != null ? endDate.format(formatter) : null) + ", assignee=" + assignee + "]";
+        + ", endDate=" + (endDate != null ? endDate.format(formatter) : null) + "]";
     }
     
     private static String cleanText(String text) {
