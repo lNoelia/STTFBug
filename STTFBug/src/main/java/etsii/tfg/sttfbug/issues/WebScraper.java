@@ -24,7 +24,7 @@ public class WebScraper{
     private static final String ISSUES_URL = "https://bugs.eclipse.org/bugs/show_bug.cgi?id=";
     private static final String ISSUE_HISTORY_URL = "https://bugs.eclipse.org/bugs/show_activity.cgi?id=";
     private static final String FILTERED_ISSUES_FILE ="resources/FILTERED_ISSUES.csv";
-    private static final Integer NUMBER_OF_ISSUES = 10000;
+    private static final Integer NUMBER_OF_ISSUES = 50;
 
     /**
      * @return Creates 3 different .csv files with the list of issues that are fixed and resolved(LRF), verified(LVF) or closed(LCF).
@@ -57,6 +57,7 @@ public class WebScraper{
     public static void getListAllIssues(){
         List<Issue> issuesList = new ArrayList<>();
         boolean stop = false;
+        Integer i= 0;
         for (String filePath : lfiles) {//We iterate through the 3 files
             if(stop){
                 break;
@@ -64,16 +65,18 @@ public class WebScraper{
             try{
                 List<String> lines = Files.readAllLines(new File(filePath).toPath());
                 lines.remove(0);//Header line
-                System.out.println("Generating CSV file");
                 for(String line : lines){
+                    i++;
+                    int progress = (int) ((double) i / NUMBER_OF_ISSUES * 100);
                     String id = line.split(",")[0];
                     String link = ISSUES_URL + id;
                     Document doc = tryConnection(link);
                     Issue issue = getIssue(doc, id);
-                    System.out.println("Issue añadida: " + id);
+                    printProgressBar(progress);
                     issuesList.add(issue);
                     if(issuesList.size() == NUMBER_OF_ISSUES){//Stop condition for development purposes
                         stop = true;
+                        System.out.println("");
                         break;
                     }
                 }         
@@ -88,19 +91,34 @@ public class WebScraper{
         writeCSV(filteredIssues,FILTERED_ISSUES_FILE); 
     }
 
+    private static void printProgressBar(int progress) {
+        int barLength = 50; 
+        System.out.print("Progress: [" + repeatCharacter('#', progress * barLength / 100));
+        System.out.print(repeatCharacter('-', (100 - progress) * barLength / 100));
+        System.out.print("] " + progress + "%\r");
+    }
+
+    private static String repeatCharacter(char character, int count) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < count; i++) {
+            sb.append(character);
+        }
+        return sb.toString();
+    }
+
     private static void writeCSV(List<Issue> issues, String path){
+        System.out.println("Generating CSV file");
         String csvFilePath = path;
         try (CSVWriter writer = new CSVWriter(new FileWriter(csvFilePath), ',', '"', '"', "\r\n")){
-            String[] header = {"ID", "Title", "Description", "Start Date", "End Date", "Assignee"};
+            String[] header = {"ID", "Start Date", "End Date", "Title", "Description"};
             writer.writeNext(header);
             for (Issue issue : issues) {
                 String[] data = {
                     String.valueOf(issue.getId()),
-                    issue.getTitle(),
-                    issue.getDescription(),
                     issue.getStartDatetoString(),
                     issue.getEndDatetoString(),
-                    issue.getAssignee()
+                    issue.getTitle(),
+                    issue.getDescription(),
                 };
                 writer.writeNext(data);
             }
@@ -242,10 +260,6 @@ public class WebScraper{
         String startDate = centralTable.getElementById("bz_show_bug_column_2").selectFirst("table tbody tr td")
         .text().split("by")[0].trim();
         issue.setStartDateStr(startDate);
-        // Asignee
-        String assignee = centralTable.getElementById("bz_show_bug_column_1").select("table tbody tr")
-        .get(12).selectFirst("td span span").text();
-        issue.setAssignee(assignee);
         // End date 
         String historyURL = ISSUE_HISTORY_URL + id;
         issue = calculateEndDate(issue, tryConnection(historyURL));
@@ -256,7 +270,7 @@ public class WebScraper{
         List<Issue> filteredIssues = new ArrayList<>();
         for(Issue issue : issues){
             if(issue.getId()!=null && issue.getTitle()!=null && issue.getDescription()!=null 
-            && issue.getStartDate()!=null && issue.getEndDate()!=null && issue.getAssignee()!=null 
+            && issue.getStartDate()!=null && issue.getEndDate()!=null
             && isAValidTime(issue)){
                 filteredIssues.add(issue);
             }
@@ -266,6 +280,6 @@ public class WebScraper{
 
     private static boolean isAValidTime(Issue issue){
         return issue.getStartDate().compareTo(issue.getEndDate()) < 0 && issue.getEndDate().compareTo(ZonedDateTime.now()) < 0 
-            && issue.getTimeSpent() > 60;
+            && issue.getTimeSpent() > 5;
     }
 }

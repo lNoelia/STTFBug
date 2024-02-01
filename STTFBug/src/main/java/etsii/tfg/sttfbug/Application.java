@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Scanner;
 
 import etsii.tfg.sttfbug.issues.WebScraper;
+import etsii.tfg.sttfbug.predictor.Predictor;
 
 public class Application {
 
@@ -25,6 +26,7 @@ public class Application {
                         e.printStackTrace();
                     } break;
                 case 2: WebScraper.getListAllIssues(); break;
+                case 4: Predictor.populateTrainingSet(); break;
                 default: throw new IllegalArgumentException("Unexpected value: " + actionSelected);
             }
         }
@@ -33,7 +35,10 @@ public class Application {
         Map<Integer,String> validValues = Map.of(0,"-> Stop execution",
         1,"-> Obtain a .csv file with the list of issues",
         2,"-> Use the .csv files obtained in method 1 to get a filtered csv file with the needed information about the issues",
-        3,"-> Use the filtered csv file to ... #WorkInProgress");
+        3,"-> Obtain a .csv file with the issues filtered using the .properties file conditions #WorkInProgress",
+        4,"-> Populate the training set to predict how long it will take to solve a new issue",
+        5,"-> Predict new issue #WorkInProgress",
+        6,"-> Evaluation methods to compare results #WorkInProgress");
         System.out.printf("Select one of the following values: %n");
         printValidValues(validValues);
         Integer actionInteger;
