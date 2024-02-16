@@ -21,7 +21,7 @@ public class WebScraper{
     private static final String LVF_FILE_PATH = "resources/LVF.csv";//File with a list of verified and fixed issues
     private static final String LCF_FILE_PATH = "resources/LCF.csv";//File with a list of closed and fixed issues
     private static final List<String> lfiles= List.of(LRF_FILE_PATH,LVF_FILE_PATH,LCF_FILE_PATH);
-    private static final String ISSUES_URL = "https://bugs.eclipse.org/bugs/show_bug.cgi?id=";
+    private static final String ISSUE_URL = "https://bugs.eclipse.org/bugs/show_bug.cgi?id=";
     private static final String ISSUE_HISTORY_URL = "https://bugs.eclipse.org/bugs/show_activity.cgi?id=";
     private static final String FILTERED_ISSUES_FILE ="resources/FILTERED_ISSUES.csv";
     private static final Integer NUMBER_OF_ISSUES = 50;
@@ -69,9 +69,9 @@ public class WebScraper{
                     i++;
                     int progress = (int) ((double) i / NUMBER_OF_ISSUES * 100);
                     String id = line.split(",")[0];
-                    String link = ISSUES_URL + id;
+                    String link = ISSUE_URL + id;
                     Document doc = tryConnection(link);
-                    Issue issue = getIssue(doc, id);
+                    Issue issue = getIssue(doc, id, IssueType.TRAINING);
                     printProgressBar(progress);
                     issuesList.add(issue);
                     if(issuesList.size() == NUMBER_OF_ISSUES){//Stop condition for development purposes
@@ -152,7 +152,7 @@ public class WebScraper{
         }
     }
 
-    private static Document tryConnection(String link){
+    public static Document tryConnection(String link){
         try{
             return Jsoup.connect(link).timeout(60*1000).get();
         } catch (IOException e) {
@@ -240,9 +240,10 @@ public class WebScraper{
     /**
      * @param doc JSoup Document of the issue page
      * @param id  ID of the issue
+     * @param type Type of issue (TRAINING or PREDICT)
      * @return Issue object with the information we need for the TTF estimator
      */
-    private static Issue getIssue(Document doc, String id){
+    public static Issue getIssue(Document doc, String id, IssueType type){
         Issue issue = new Issue();
         Element formElement = doc.getElementById("changeform"); // Central form that contains all the information
         //ID
@@ -255,14 +256,16 @@ public class WebScraper{
         Element commentTable = formElement.getElementsByClass("bz_comment_table").get(0);
         Element descriptionElement = commentTable.getElementById("c0").select("pre").get(0);
         issue.setDescription(descriptionElement.text());
-        // Start date
-        Element centralTable = formElement.selectFirst("table tbody tr");
-        String startDate = centralTable.getElementById("bz_show_bug_column_2").selectFirst("table tbody tr td")
-        .text().split("by")[0].trim();
-        issue.setStartDateStr(startDate);
-        // End date 
-        String historyURL = ISSUE_HISTORY_URL + id;
-        issue = calculateEndDate(issue, tryConnection(historyURL));
+        if(type.equals(IssueType.TRAINING)){
+            // Start date
+            Element centralTable = formElement.selectFirst("table tbody tr");
+            String startDate = centralTable.getElementById("bz_show_bug_column_2").selectFirst("table tbody tr td")
+            .text().split("by")[0].trim();
+            issue.setStartDateStr(startDate);
+            // End date 
+            String historyURL = ISSUE_HISTORY_URL + id;
+            issue = calculateEndDate(issue, tryConnection(historyURL));
+        }
         return issue;
     }
 
