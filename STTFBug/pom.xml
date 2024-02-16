@@ -28,6 +28,14 @@
             <version>9.9.0</version> 
         </dependency>
 
+        <!-- Lucene queryparser -->
+        <dependency>
+            <groupId>org.apache.lucene</groupId>
+            <artifactId>lucene-queryparser</artifactId>
+            <version>9.9.0</version>
+        </dependency>
+
+
         <!-- Jsoup -->
         <dependency>
             <groupId>org.jsoup</groupId>
