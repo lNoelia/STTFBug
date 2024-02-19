@@ -12,8 +12,12 @@ The config.properties file is used to config the various parameters given to the
 - filteredissue.path: path of the file with the filtered issues (or where you want to store it). Has to be a .csv file
 - predict.issue.list: IDs of the issues that we want to predict, separated by comma
 - issues.neighbor: number of neighbors to be considered when giving the k-closest neighbors.
+- issues.filter: list of documents to be downloaded. The documents have this format: XY.csv , where X is the initial of the Rsolution and Y is the initial of the Status.
+#### Values of resolution and status
+- Resolution values: F(Fixed), I(Invalid), W(Wontfix), D(Duplicated), 4(Worksforme), M(Moved), N(NotEclipse), T(Total)
+- Status values: U(Unconfirmed), N(New), A(Assigned), O(reOpen), R(Resolved), V(Verified), C(Closed), T(Total)
 #### Non editable properties
-- issues.url: Auxiliar url for web scrapping. (Should be left at it is) 
+- issues.url: Auxiliar url for web scrapping. 
 
 #### Sample config.properties file: 
 ToDo
