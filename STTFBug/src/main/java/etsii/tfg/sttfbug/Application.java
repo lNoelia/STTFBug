@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Scanner;
 
+import etsii.tfg.sttfbug.issues.IssueFilter;
 import etsii.tfg.sttfbug.issues.WebScraper;
 import etsii.tfg.sttfbug.predictor.Predictor;
 
@@ -31,7 +32,7 @@ public class Application {
                         } catch (IOException e) {
                             e.printStackTrace();
                         } break;
-                    case 2: WebScraper.getListAllIssues(properties); break;
+                    case 2: IssueFilter.getListAllIssues(properties); break;
                     case 4: Predictor.populateTrainingSet(properties); break;
                     case 5: Predictor.predictTTFIssues(properties); break;
                     default: throw new IllegalArgumentException("Unexpected value: " + actionSelected);

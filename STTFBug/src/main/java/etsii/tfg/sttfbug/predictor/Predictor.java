@@ -28,6 +28,7 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 
 import etsii.tfg.sttfbug.issues.Issue;
+import etsii.tfg.sttfbug.issues.IssueFilter;
 import etsii.tfg.sttfbug.issues.IssueType;
 import etsii.tfg.sttfbug.issues.WebScraper;
 
@@ -98,11 +99,11 @@ public class Predictor {
         public static void predictTTFIssues(Properties properties){
             List<List<String>> result = new ArrayList<>();
             List<String> issuesID = List.of(properties.getProperty("predict.issue.list").split(","));
-            String issueUrl = properties.getProperty("issues.url");
+            String issueUrl = properties.getProperty("url.issue");
             for(String id: issuesID){
                 String link = issueUrl+id;
                 org.jsoup.nodes.Document doc = WebScraper.tryConnection(link);
-                Issue issue = WebScraper.getIssue(doc, id, IssueType.PREDICT);
+                Issue issue = IssueFilter.getIssue(doc, id, IssueType.PREDICT);
                 result.add(predictTimeToFix(issue, properties));
             }
             Integer k = Integer.valueOf(properties.getProperty("issues.neighbor"));
