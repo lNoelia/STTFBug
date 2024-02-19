@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import org.apache.commons.io.FileUtils;
 import org.jsoup.*;
@@ -16,7 +17,6 @@ import org.jsoup.select.Elements;
 import com.opencsv.CSVWriter;
 
 public class WebScraper{
-    private static final String MAIN_URL = "https://bugs.eclipse.org/bugs/report.cgi?x_axis_field=resolution&y_axis_field=bug_status&z_axis_field=&width=600&height=350&action=wrap&format=table&product=Platform";
     private static final String LRF_FILE_PATH = "resources/LRF.csv";//File with a list of resolved and fixed issues
     private static final String LVF_FILE_PATH = "resources/LVF.csv";//File with a list of verified and fixed issues
     private static final String LCF_FILE_PATH = "resources/LCF.csv";//File with a list of closed and fixed issues
@@ -24,16 +24,19 @@ public class WebScraper{
     private static final String ISSUE_URL = "https://bugs.eclipse.org/bugs/show_bug.cgi?id=";
     private static final String ISSUE_HISTORY_URL = "https://bugs.eclipse.org/bugs/show_activity.cgi?id=";
     private static final String FILTERED_ISSUES_FILE ="resources/FILTERED_ISSUES.csv";
-    private static final Integer NUMBER_OF_ISSUES = 50;
 
     /**
      * @return Creates 3 different .csv files with the list of issues that are fixed and resolved(LRF), verified(LVF) or closed(LCF).
      */
-    public static void searchDocs() throws IOException{
-        for(String f:lfiles){
-            File file = new File(f);
+    public static void searchDocs(Properties properties) throws IOException{
+        String urlMain= properties.getProperty("url.main");
+        List<String> listDocuments= List.of(properties.getProperty("url.listDocuments").split(","));
+        Integer row = 0;
+        Integer column = 0;
+        for(String f:listDocuments){
+            File file = new File("resources/"+f+".csv");
             Files.deleteIfExists(file.toPath());// To avoid unique name issues, we delete the .csv if it already exists 
-            Document doc = Jsoup.connect(MAIN_URL).get();
+            Document doc = Jsoup.connect(urlMain).get();
                 switch (f) {
                     case LRF_FILE_PATH:
                         getIssuesDocument(doc, LRF_FILE_PATH, 4, 2);// 4 = Resolved, 2 = Fixed
@@ -54,7 +57,8 @@ public class WebScraper{
     /**
      * Creates a .csv file with a list of issues with the information we need for the TTF estimator. 
      */
-    public static void getListAllIssues(){
+    public static void getListAllIssues(Properties properties){
+        Integer maxIssues = Integer.parseInt(properties.getProperty("issues.max"));
         List<Issue> issuesList = new ArrayList<>();
         boolean stop = false;
         Integer i= 0;
@@ -67,14 +71,14 @@ public class WebScraper{
                 lines.remove(0);//Header line
                 for(String line : lines){
                     i++;
-                    int progress = (int) ((double) i / NUMBER_OF_ISSUES * 100);
+                    int progress = (int) ((double) i / maxIssues * 100);
                     String id = line.split(",")[0];
                     String link = ISSUE_URL + id;
                     Document doc = tryConnection(link);
                     Issue issue = getIssue(doc, id, IssueType.TRAINING);
                     printProgressBar(progress);
                     issuesList.add(issue);
-                    if(issuesList.size() == NUMBER_OF_ISSUES){//Stop condition for development purposes
+                    if(issuesList.size() == maxIssues){//Stop condition for development purposes
                         stop = true;
                         System.out.println("");
                         break;

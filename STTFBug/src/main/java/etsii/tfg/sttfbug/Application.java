@@ -27,11 +27,11 @@ public class Application {
                             scanner.close();
                             return;
                     case 1: try {
-                            WebScraper.searchDocs();
+                            WebScraper.searchDocs(properties);
                         } catch (IOException e) {
                             e.printStackTrace();
                         } break;
-                    case 2: WebScraper.getListAllIssues(); break;
+                    case 2: WebScraper.getListAllIssues(properties); break;
                     case 4: Predictor.populateTrainingSet(properties); break;
                     case 5: Predictor.predictTTFIssues(properties); break;
                     default: throw new IllegalArgumentException("Unexpected value: " + actionSelected);
