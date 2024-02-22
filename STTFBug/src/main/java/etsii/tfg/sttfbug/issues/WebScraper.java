@@ -28,7 +28,6 @@ public class WebScraper{
                 File file = new File(filePath);
                 Files.deleteIfExists(file.toPath());// To avoid unique name conflicts, we delete the .csv if it already exists 
                 Document doc = Jsoup.connect(urlMain).get();
-                System.out.println(row + " " + column);
                 if(row != -1 && column != -1){
                     getIssuesDocument(doc, filePath, row, column);
                 }else{

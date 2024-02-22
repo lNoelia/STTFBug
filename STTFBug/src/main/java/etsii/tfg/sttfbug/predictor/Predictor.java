@@ -115,13 +115,11 @@ public class Predictor {
             }
         }
 
-        private static List<String> predictTimeToFix(Issue issue, Properties properties) {
-            Document issueDoc = new Document();
-            
+        private static List<String> predictTimeToFix(Issue issue, Properties properties) {            
             List<String> results = new ArrayList<>();
             Directory dir;
             try {
-                dir = FSDirectory.open(Paths.get(properties.getProperty("lucene.directorypath")));// ESTE DIRECTORIO ESTA VACIO ?????
+                dir = FSDirectory.open(Paths.get(properties.getProperty("lucene.directorypath")));
                 IndexReader reader = DirectoryReader.open(dir);
                 IndexSearcher searcher = new IndexSearcher(reader);
                 searcher.setSimilarity(new ClassicSimilarity()); 
@@ -144,7 +142,7 @@ public class Predictor {
                     String query = "title:\"" + issue.getTitle()+"\" AND description:\"" + issue.getDescription()+"\"";
                     TopDocs topHits = searcher.search(parser.parse(query), 3);
                     ScoreDoc[] hits = topHits.scoreDocs;
-                    System.out.println(hits.length);
+                    System.out.println("Hits: "+ hits.length);
                     for(int i=0; i<hits.length; i++){
                         System.out.println(hits[i]);
                         Document doc = searcher.storedFields().document(i);

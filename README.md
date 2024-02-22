@@ -12,7 +12,13 @@ The config.properties file is used to config the various parameters given to the
 - filteredissue.path: path of the file with the filtered issues (or where you want to store it). Has to be a .csv file
 - predict.issue.list: IDs of the issues that we want to predict, separated by comma
 - issues.neighbor: number of neighbors to be considered when giving the k-closest neighbors.
-- issues.filter: list of documents to be downloaded. The documents have this format: XY , where X is the initial of the Resolution and Y is the initial of the Status.
+- issues.max: max number of issues to be filtered. In case the issue files have more than this number, those issues won't be added to the "filtered issue" file. ¿can i put Itenerg.maxvalue? It's recommended to put a number here to have a good representation of the progress 
+- notnull.Title: true or false. If this value is true, it means that the title of the issue can NOT be null.
+- notnull.Description: true or false. If this value is true, it means that the description of the issue can NOT be null.
+- notnull.Id: true or false. If this value is true, it means that the ID of the issue can NOT be null. true value recommended
+- notnull.StartDate: true or false. If this value is true, it means that the title of the issue can NOT be null. true value recommended
+- notnull.EndDate: true or false. If this value is true, it means that the ID of the issue can NOT be null. 
+- issues.list.documents: list of documents to be downloaded. The documents have this format: XY , where X is the initial of the Resolution and Y is the initial of the Status.
 #### Values of resolution and status
 - Resolution values: -(Resolution not set) , F(Fixed), I(Invalid), W(Wontfix), D(Duplicated), 4(worksforme), M(Moved), N(Not_eclipse), T(Total)
 - Status values: U(Unconfirmed), N(New), A(Assigned), O(reOpen), R(Resolved), V(Verified), C(Closed), T(Total)
@@ -20,5 +26,6 @@ The config.properties file is used to config the various parameters given to the
 - url.main: URL with table of issues by Resolution and status values.
 - url.issue: URL to issue details
 - url.issue.history: URL to the history of an issue
+- issue.fields: fields of the class Issue.
 #### Sample config.properties file: 
 ToDo

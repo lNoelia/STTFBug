@@ -3,7 +3,6 @@ package etsii.tfg.sttfbug.issues;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -11,11 +10,16 @@ import java.util.List;
 import java.util.Properties;
 
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import com.opencsv.CSVWriter;
 
 public class IssueFilter {
+
+    private static String ISSUE_URL = "https://bugs.eclipse.org/bugs/show_bug.cgi?id=";
+    private static String ISSUE_HISTORY_URL = "https://bugs.eclipse.org/bugs/show_activity.cgi?id=";
+    public static Integer numberReopenedIssues = 0;
 
     /**
      * Creates a .csv file with a list of issues with the information we need for the TTF estimator. 
@@ -23,7 +27,7 @@ public class IssueFilter {
     public static void getListAllIssues(Properties properties){
         Integer maxIssues = Integer.parseInt(properties.getProperty("issues.max"));
         List<String> lfiles = getlistFiles(properties.getProperty("issues.list.documents"));
-        String issueUrl= properties.getProperty("issues.url");
+        String filteredIssueFile = properties.getProperty("filteredissue.path");
         List<Issue> issuesList = new ArrayList<>();
         boolean stop = false;
         Integer i= 0;
@@ -38,7 +42,7 @@ public class IssueFilter {
                     i++;
                     int progress = (int) ((double) i / maxIssues * 100);
                     String id = line.split(",")[0];
-                    String link = issueUrl + id;
+                    String link = ISSUE_URL + id;
                     Document doc = WebScraper.tryConnection(link);
                     Issue issue = getIssue(doc, id, IssueType.TRAINING);
                     printProgressBar(progress);
@@ -55,9 +59,10 @@ public class IssueFilter {
             }
         }
         System.out.println("Issues list size: " + issuesList.size());
-        List<Issue> filteredIssues = filterIssues(issuesList);
+        List<Issue> filteredIssues = filterIssues(issuesList, properties);
         System.out.println("Filtered issues list size: " + filteredIssues.size());
-        writeCSV(filteredIssues,FILTERED_ISSUES_FILE); 
+        System.out.println("Number of issues reopened:"+numberReopenedIssues);
+        writeCSV(filteredIssues,filteredIssueFile); 
     }
 
     private static List<String> getlistFiles(String strDoc) {
@@ -115,12 +120,41 @@ public class IssueFilter {
      * @param historyDoc JSoup Document of the issue history page
      * @return The same issue object with the end date calculated and the start date reviewed
      */
-    private static Issue calculateEndDate(Issue issue, Document historyDoc){
+    private static void calculateEndDate(Issue issue, Document historyDoc){
         Elements historyTableRows = historyDoc.select("div table tbody tr");
+        if(historyTableRows.isEmpty()){
+            issue.setEndDate(null);
+            
+        }else{
+            List<HistoryRow> history = prepareHistoryRows(historyTableRows);
+            List<HistoryRow> lResolutionFixed = new ArrayList<>();
+            for(HistoryRow historyRow : history){ // Select the rows where the resolution attribute changed to fixed
+                if(historyRow.getWhat().equals("Resolution") && historyRow.getAdded().equals("FIXED")){
+                    lResolutionFixed.add(historyRow);
+                }
+            }
+            if(lResolutionFixed.size()==1){//if there's only one time where the issue was set to fixed, that's it's end date
+                HistoryRow rowFixed = lResolutionFixed.get(0);
+                issue.setEndDate(rowFixed.getWhen());
+                reviewStartDate(issue, history, rowFixed);
+            }else if(lResolutionFixed.isEmpty()){//if the issue was never set to fixed, we set the end date to null so we can discard it
+                issue.setEndDate(null);
+            }else{
+                //In this case,some of the issue might have been "reopened", lets count them to make statistics and take a decision based on that
+                isReopendIssue(history);
+                HistoryRow lastChange = lResolutionFixed.get(lResolutionFixed.size()-1);
+                issue.setEndDate(lastChange.getWhen());//The final date is the last time it's resolution was set to fixed.
+                reviewStartDate(issue, history, lastChange);
+            }
+        }
+        
+    }
+
+    private static List<HistoryRow> prepareHistoryRows(Elements historyTableRows) {
         historyTableRows.remove(0);//Header row
+        List<HistoryRow> history = new ArrayList<>();
         String who = null;//Auxiliar var to help us identify the attribute "who" from the past row
         ZonedDateTime when = null;//Auxiliar var to help us identify the attribute "when" from the past row
-        List<HistoryRow> history = new ArrayList<>();
         for(Element row : historyTableRows){ // Create a list of "historyRows" from the table to filter the information    
             Elements cellsElements = row.select("td");
             List<String> cells = new ArrayList<>();//Elements.eachText() deletes empty elements, but we need them
@@ -137,24 +171,20 @@ public class IssueFilter {
                 history.add(historyRow);
             }
         }
-        List<HistoryRow> lResolutionFixed = new ArrayList<>();
-        for(HistoryRow historyRow : history){ // Select the rows where the resolution attribute changed to fixed
-            if(historyRow.getWhat().equals("Resolution") && historyRow.getAdded().equals("FIXED")){
-                  lResolutionFixed.add(historyRow);
+        return history;
+    }
+    
+    private static void isReopendIssue(List<HistoryRow> history) {
+        List<HistoryRow> lReopenedRows = new ArrayList<>();
+        for(HistoryRow historyRow : history){ // Select the rows where the resolution attribute changed to reopened
+            if(historyRow.getWhat().equals("Status") && historyRow.getAdded().equals("REOPENED")){
+                lReopenedRows.add(historyRow);
             }
         }
-        if(lResolutionFixed.size()==1){//if there's only one time where the issue was set to fixed, that's it's end date
-            HistoryRow rowFixed = lResolutionFixed.get(0);
-            issue.setEndDate(rowFixed.getWhen());
-            issue = reviewStartDate(issue, history, rowFixed);
-        }else if(lResolutionFixed.isEmpty()){//if the issue was never set to fixed, we set the end date to null so we can discard it
-            issue.setEndDate(null);
-        }else{// REVIEW THIS PART
-            HistoryRow lastChange = lResolutionFixed.get(lResolutionFixed.size()-1);
-            issue.setEndDate(lastChange.getWhen());//The final date is the last time it's resolution was set to fixed.
-            issue = reviewStartDate(issue, history, lastChange);
+        if(!lReopenedRows.isEmpty()){
+            numberReopenedIssues++;
         }
-        return issue;
+    
     }
 
     /**
@@ -162,9 +192,9 @@ public class IssueFilter {
      * @param issue issue object with the information we need for the TTF estimator
      * @param history List of historyRows of the issue (changes made on the issue report)
      * @param rowFixed HistoryRow where the resolution was set to fixed
-     * @return The same issue object with the start date reviewed 
+     * "Returns" the same issue object with the start date reviewed 
      */
-    private static Issue reviewStartDate(Issue issue, List<HistoryRow> history, HistoryRow rowFixed) {
+    private static void reviewStartDate(Issue issue, List<HistoryRow> history, HistoryRow rowFixed) {
         ZonedDateTime auxstartDate = issue.getStartDate();
         List<HistoryRow> lAssigneeChanged = new ArrayList<>();//Auxiliar list with the historyRows where the asignee changed
         for(HistoryRow historyRow : history){
@@ -172,16 +202,13 @@ public class IssueFilter {
                 lAssigneeChanged.add(historyRow);
             }
         }
-        if (lAssigneeChanged.isEmpty()) {//If the assignee was never changed, then the start date is correct
-            return issue;
-        }else{
+        if (!lAssigneeChanged.isEmpty()) {//If the assignee was never changed, then the start date is correct, if it's not...
             for(HistoryRow assigneeRow : lAssigneeChanged){//We iterate through the list of assignee changes to get the correct start date
                 if(assigneeRow.getWhen().compareTo(auxstartDate)>0 && assigneeRow.getWhen().compareTo(rowFixed.getWhen())<0){
                     auxstartDate = assigneeRow.getWhen();
                 }
             }
             issue.setStartDate(auxstartDate);
-            return issue;
         }
         
     }
@@ -213,21 +240,43 @@ public class IssueFilter {
             issue.setStartDateStr(startDate);
             // End date 
             String historyURL = ISSUE_HISTORY_URL + id;
-            issue = calculateEndDate(issue, tryConnection(historyURL));
+            calculateEndDate(issue, WebScraper.tryConnection(historyURL));
         }
         return issue;
     }
 
-    private static List<Issue> filterIssues(List<Issue> issues){
+    private static List<Issue> filterIssues(List<Issue> issues, Properties properties){
         List<Issue> filteredIssues = new ArrayList<>();
         for(Issue issue : issues){
-            if(issue.getId()!=null && issue.getTitle()!=null && issue.getDescription()!=null 
-            && issue.getStartDate()!=null && issue.getEndDate()!=null
-            && isAValidTime(issue)){
-                filteredIssues.add(issue);
+            if(isIssueValid(issue, properties)){
+                if(isAValidTime(issue)){//This check has to be outside because of conflicts when comparing null values
+                    filteredIssues.add(issue);
+                }
             }
         }
         return filteredIssues;
+    }
+
+    private static boolean isIssueValid(Issue issue, Properties properties) {
+        String[] fields = properties.getProperty("issue.fields").split(",");
+        for (String key : fields) {
+            boolean shouldNotBeNull = Boolean.parseBoolean(properties.getProperty("notnull."+key));
+            if (shouldNotBeNull && getProperty(issue, key) == null) {
+                return false; // Issue does not meet criteria
+            }
+        }
+        return true;
+    }
+    
+    private static Object getProperty(Issue issue, String attrName) {
+        try {
+            String methodName = "get" + attrName.substring(0, 1).toUpperCase() + attrName.substring(1);
+            return Issue.class.getMethod(methodName).invoke(issue);
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private static boolean isAValidTime(Issue issue){

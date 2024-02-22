@@ -37,6 +37,7 @@ public class Application {
                     case 5: Predictor.predictTTFIssues(properties); break;
                     default: throw new IllegalArgumentException("Unexpected value: " + actionSelected);
                 }
+                IssueFilter.numberReopenedIssues=0;
             }
         } catch (IOException ex) {
             ex.printStackTrace();
