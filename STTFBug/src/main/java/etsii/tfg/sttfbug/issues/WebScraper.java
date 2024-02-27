@@ -24,7 +24,8 @@ public class WebScraper{
             }else{
                 Integer column = getColumn(f.charAt(0));
                 Integer row = getRow(f.charAt(1));
-                String filePath = "resources/"+f+".csv";
+                String resources = properties.getProperty("eclipseissues.directorypath");
+                String filePath = resources + File.separator + f + ".csv";
                 File file = new File(filePath);
                 Files.deleteIfExists(file.toPath());// To avoid unique name conflicts, we delete the .csv if it already exists 
                 Document doc = Jsoup.connect(urlMain).get();

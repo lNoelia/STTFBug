@@ -10,6 +10,7 @@ The config.properties file is used to config the various parameters given to the
 - analyzer.stopwords: words and symbols separated by commas that will not be taken into account when calculating similarity
 - lucene.directorypath: path where the Lucene directory will be stored (used in the training set to predict time to fix)
 - filteredissue.path: path of the file with the filtered issues (or where you want to store it). Has to be a .csv file
+- eclipseissues.directorypath: path to the directory where the eclipse issue csv will be downloaded
 - predict.issue.list: IDs of the issues that we want to predict, separated by comma
 - issues.neighbor: number of neighbors to be considered when giving the k-closest neighbors.
 - issues.max: max number of issues to be filtered. In case the issue files have more than this number, those issues won't be added to the "filtered issue" file. ¿can i put Itenerg.maxvalue? It's recommended to put a number here to have a good representation of the progress 

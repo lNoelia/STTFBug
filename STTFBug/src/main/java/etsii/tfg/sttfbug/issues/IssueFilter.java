@@ -26,7 +26,7 @@ public class IssueFilter {
      */
     public static void getListAllIssues(Properties properties){
         Integer maxIssues = Integer.parseInt(properties.getProperty("issues.max"));
-        List<String> lfiles = getlistFiles(properties.getProperty("issues.list.documents"));
+        List<String> lfiles = getlistFiles(properties.getProperty("issues.list.documents"), properties);
         String filteredIssueFile = properties.getProperty("filteredissue.path");
         List<Issue> issuesList = new ArrayList<>();
         boolean stop = false;
@@ -65,13 +65,15 @@ public class IssueFilter {
         writeCSV(filteredIssues,filteredIssueFile); 
     }
 
-    private static List<String> getlistFiles(String strDoc) {
+    private static List<String> getlistFiles(String strDoc, Properties properties) {
         String[] files = strDoc.split(",");
         List<String> lfiles = new ArrayList<>();
         for(String file : files){
             if(file.length() ==2){
-                String res= "resources/"+file+".csv";
+                String resources = properties.getProperty("eclipseissues.directorypath");
+                String res= resources+ File.separator +file+".csv";
                 lfiles.add(res);
+
             }
         }
         return lfiles;
