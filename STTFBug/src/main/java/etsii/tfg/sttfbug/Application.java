@@ -34,7 +34,7 @@ public class Application {
                         } break;
                     case 2: IssueFilter.getListAllIssues(properties); break;
                     case 4: Predictor.populateTrainingSet(properties); break;
-                    case 5: Predictor.predictTTFIssues(properties); break;
+                    //case 5: Predictor.predictTTFIssues(properties); break;
                     default: throw new IllegalArgumentException("Unexpected value: " + actionSelected);
                 }
                 IssueFilter.numberReopenedIssues=0;
