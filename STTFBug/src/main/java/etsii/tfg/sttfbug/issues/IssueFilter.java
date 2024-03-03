@@ -27,7 +27,7 @@ public class IssueFilter {
     public static void getListAllIssues(Properties properties){
         List<String> lfiles = getlistFiles(properties.getProperty("issues.list.documents"), properties);
         Integer maxIssues =calculateMaxIssues(properties,lfiles);
-        System.out.println("Max issues to be processed: "+maxIssues);
+        System.out.println("Issues to be processed: "+maxIssues);
         String filteredIssueFile = properties.getProperty("filteredissue.path");
         List<Issue> issuesList = new ArrayList<>();
         boolean stop = false;
