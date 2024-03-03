@@ -1,16 +1,15 @@
 package etsii.tfg.sttfbug.predictor;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
-import java.util.Set;
-
-import javax.sql.rowset.spi.SyncResolver;
 
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -85,10 +84,11 @@ public class Predictor {
         private static void writeIssues(IndexWriter writer, String filePath) {
             try(BufferedReader br = new BufferedReader(new FileReader(filePath))){
                 String line;
-                int i=0;
+                Long i=0L;
+                Long lines = Files.lines(new File(filePath).toPath()).count()-1;
                 while ((line = br.readLine()) != null) {
                     i++;
-                    if(!line.contains("\"ID\",\"Start Date\",\"End Date\",\"Title\",\"Description\"") && i<501){
+                    if(!line.contains("\"ID\",\"Start Date\",\"End Date\",\"Title\",\"Description\"") && i<lines){
                         List<String> issue = List.of(line.split("\",\""));
                         StringBuilder description = new StringBuilder(issue.get(4));
                         description.deleteCharAt(description.length()-1);
