@@ -13,7 +13,7 @@ The config.properties file is used to config the various parameters given to the
 - eclipseissues.directorypath: path to the directory where the eclipse issue csv will be downloaded
 - predict.issue.list: IDs of the issues that we want to predict, separated by comma
 - issues.neighbor: number of neighbors to be considered when giving the k-closest neighbors.
-- issues.max: max number of issues to be filtered. In case the issue files have more than this number, those issues won't be added to the "filtered issue" file. ¿can i put Itenerg.maxvalue? It's recommended to put a number here to have a good representation of the progress 
+- issues.max: max number of issues to be filtered. In case the issue files have more lines than this value, those issues won't be added to the "filtered issue" file. Choose -1 to obtain all the issues on the file. 
 - notnull.Title: true or false. If this value is true, it means that the title of the issue can NOT be null.
 - notnull.Description: true or false. If this value is true, it means that the description of the issue can NOT be null.
 - notnull.Id: true or false. If this value is true, it means that the ID of the issue can NOT be null. true value recommended

@@ -25,8 +25,9 @@ public class IssueFilter {
      * Creates a .csv file with a list of issues with the information we need for the TTF estimator. 
      */
     public static void getListAllIssues(Properties properties){
-        Integer maxIssues = Integer.parseInt(properties.getProperty("issues.max"));
         List<String> lfiles = getlistFiles(properties.getProperty("issues.list.documents"), properties);
+        Integer maxIssues =calculateMaxIssues(properties,lfiles);
+        System.out.println("Max issues to be processed: "+maxIssues);
         String filteredIssueFile = properties.getProperty("filteredissue.path");
         List<Issue> issuesList = new ArrayList<>();
         boolean stop = false;
@@ -63,6 +64,32 @@ public class IssueFilter {
         System.out.println("Filtered issues list size: " + filteredIssues.size());
         System.out.println("Number of issues reopened:"+numberReopenedIssues);
         writeCSV(filteredIssues,filteredIssueFile); 
+    }
+
+    private static Integer calculateMaxIssues(Properties properties, List<String> lfiles) {
+        Integer maxIssues = Integer.parseInt(properties.getProperty("issues.max"));
+        if(maxIssues<-1){
+            System.out.println("Invalid max issues value, setting it to max value possible.");
+            maxIssues = -1;
+        }
+        Long totalIssues = 0L;
+        for(String file : lfiles){
+            try{
+                Long lines = Files.lines(new File(file).toPath()).count()-1;
+                totalIssues+=lines;
+            } catch (IOException e) {
+                System.err.println("File "+file+" does not exists : " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+        if(maxIssues==-1){
+            return totalIssues.intValue();            
+        }else if(totalIssues<maxIssues){
+            return totalIssues.intValue();
+        }
+        else{
+            return maxIssues;
+        }
     }
 
     private static List<String> getlistFiles(String strDoc, Properties properties) {
