@@ -5,6 +5,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -22,6 +23,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
@@ -58,8 +60,8 @@ public class Predictor {
          * hay que seguir las indicaciones del paper para completar la evaluación.
          */
         public static void populateTrainingSet(Properties properties){
-            Set<String> stopWords = Set.of(properties.getProperty("analyzer.stopwords").split(","));
-            CharArraySet sWSet = new CharArraySet(stopWords, true);
+            String[] stopWords = properties.getProperty("analyzer.stopwords").split(",");
+            CharArraySet sWSet = new CharArraySet(Arrays.asList(stopWords), true);
             try(StandardAnalyzer analyzer = new StandardAnalyzer(sWSet)) {
                 try (Directory dir = FSDirectory.open(Paths.get(properties.getProperty("lucene.directorypath")))) {
                     IndexWriterConfig config = new IndexWriterConfig(analyzer);
@@ -74,7 +76,7 @@ public class Predictor {
                         e.printStackTrace();
                     }
                 } catch (IOException e) {
-                    System.out.println("Error opening Lucene directory: " + e.getMessage());
+                    System.err.println("Error opening Lucene directory: " + e.getMessage());
                 }
             }
 
@@ -87,18 +89,20 @@ public class Predictor {
                 while ((line = br.readLine()) != null) {
                     i++;
                     if(!line.contains("\"ID\",\"Start Date\",\"End Date\",\"Title\",\"Description\"") && i<501){
-                        List<String> issue = List.of(line.replace("\"", "").split(","));
+                        List<String> issue = List.of(line.split("\",\""));
+                        StringBuilder description = new StringBuilder(issue.get(4));
+                        description.deleteCharAt(description.length()-1);
                         Document doc = new Document();
-                        doc.add(new StringField("id", issue.get(0) ,Field.Store.YES));
-                        doc.add(new TextField("title", issue.get(1), Field.Store.YES));
-                        doc.add(new TextField("description", issue.get(2), Field.Store.YES));
+                        doc.add(new StringField("id", issue.get(0).replace("\"", "") ,Field.Store.YES));
+                        doc.add(new TextField("title", issue.get(3), Field.Store.YES));
+                        doc.add(new TextField("description", description.toString(), Field.Store.YES));
                         writer.addDocument(doc);
-                        System.out.println( doc.toString());
                     }
                 }
                 System.out.println("Training set populated");
             }catch(IOException e){
-                System.out.println("Could not find \"FILTERED_ISSUES.csv\" file ");
+                e.printStackTrace();
+                System.err.println("Could not find \"FILTERED_ISSUES.csv\" file ");
             }
         }
 
@@ -130,13 +134,15 @@ public class Predictor {
                 IndexWriterConfig config = new IndexWriterConfig(analyzer);
                 config.setSimilarity(new ClassicSimilarity());
                 String[] fields = {"title", "description"};
-                MultiFieldQueryParser parser= new MultiFieldQueryParser(fields, analyzer);
-                String query = "title:\"" + issue.getTitle()+"\" AND description:\"" + issue.getDescription()+"\"";
-                TopDocs topHits;
+                String[] queries =  {escapeSpecialCharacters(issue.getTitle()), escapeSpecialCharacters(issue.getDescription())};
+                
+                MultiFieldQueryParser parser = new MultiFieldQueryParser(fields, analyzer);
                 try {
-                    topHits = searcher.search(parser.parse(query), 3);
+                    Query query = parser.parse(queries,fields,analyzer);
+                    TopDocs topHits;
+                    topHits = searcher.search(query, 3);
                     ScoreDoc[] hits = topHits.scoreDocs;
-                    System.out.println("Hits: "+ hits.length);
+                    System.out.println("Hits for issue "+issue.getId()+": "+ hits.length);
                     for(int i=0; i<hits.length; i++){
                         System.out.println(hits[i]);
                         Document doc = searcher.storedFields().document(i);
@@ -153,6 +159,9 @@ public class Predictor {
             
             return results;
         }
-
+        private static String escapeSpecialCharacters(String query) {
+            query = query.replaceAll("([\\[\\](){}+\\-'\"/])", "\\\\$1");
+            return query;
+        }
     
 }
