@@ -9,8 +9,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -25,6 +27,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -62,15 +65,19 @@ public class Predictor {
             String[] stopWords = properties.getProperty("analyzer.stopwords").split(",");
             CharArraySet sWSet = new CharArraySet(Arrays.asList(stopWords), true);
             try(StandardAnalyzer analyzer = new StandardAnalyzer(sWSet)) {
-                try (Directory dir = FSDirectory.open(Paths.get(properties.getProperty("lucene.directorypath")))) {
+                String filePath = properties.getProperty("lucene.directorypath");
+                File file = new File(filePath);
+                if(file.exists())
+                    try{FileUtils.deleteDirectory(file);}
+                    catch(IOException e){e.printStackTrace();}//Prints the stack trace of the exception if the same method is called again but works (?)
+                try (Directory dir = FSDirectory.open(Paths.get(filePath))) {
                     IndexWriterConfig config = new IndexWriterConfig(analyzer);
-                    config.setSimilarity(new ClassicSimilarity());//TF-IDF implementation for similarity
+                    config.setSimilarity(new BM25Similarity());
                     try {
                         IndexWriter writer = new IndexWriter(dir, config);
                         writeIssues(writer, properties.getProperty("filteredissue.path"));
                         writer.close();
                         predictTTFIssues(properties, dir, analyzer);
-                        
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -99,6 +106,7 @@ public class Predictor {
                         writer.addDocument(doc);
                     }
                 }
+                System.out.println("Number of issues processed: "+(i-1));
                 System.out.println("Training set populated");
             }catch(IOException e){
                 e.printStackTrace();
@@ -106,7 +114,7 @@ public class Predictor {
             }
         }
 
-        public static void predictTTFIssues(Properties properties, Directory dir, StandardAnalyzer analyzer){
+        public static void predictTTFIssues(Properties properties, Directory dir, StandardAnalyzer analyzer ){
             List<List<String>> result = new ArrayList<>();
             List<String> issuesID = List.of(properties.getProperty("predict.issue.list").split(","));
             String issueUrl = properties.getProperty("url.issue");
@@ -114,7 +122,7 @@ public class Predictor {
                 String link = issueUrl+id;
                 org.jsoup.nodes.Document doc = WebScraper.tryConnection(link);
                 Issue issue = IssueFilter.getIssue(doc, id, IssueType.PREDICT);
-                result.add(predictTimeToFix(issue, properties,dir,analyzer));
+                result.add(predictTimeToFix(issue,dir,analyzer));
             }
             Integer k = Integer.valueOf(properties.getProperty("issues.neighbor"));
             for(int i=0;i<k;i++){
@@ -125,18 +133,16 @@ public class Predictor {
             }
         }
 
-        private static List<String> predictTimeToFix(Issue issue, Properties properties, Directory dir, StandardAnalyzer analyzer) {            
+        private static List<String> predictTimeToFix(Issue issue, Directory dir, StandardAnalyzer analyzer) {            
             List<String> results = new ArrayList<>();
             try {
                 IndexReader reader = DirectoryReader.open(dir);
                 IndexSearcher searcher = new IndexSearcher(reader);
-                searcher.setSimilarity(new ClassicSimilarity());
-                IndexWriterConfig config = new IndexWriterConfig(analyzer);
-                config.setSimilarity(new ClassicSimilarity());
+                searcher.setSimilarity(new BM25Similarity());
                 String[] fields = {"title", "description"};
                 String[] queries =  {escapeSpecialCharacters(issue.getTitle()), escapeSpecialCharacters(issue.getDescription())};
-                
-                MultiFieldQueryParser parser = new MultiFieldQueryParser(fields, analyzer);
+                Map<String, Float> boosts = Map.of("title", 1.0f, "description", 1.0f);
+                MultiFieldQueryParser parser = new MultiFieldQueryParser(fields, analyzer,boosts);
                 try {
                     Query query = parser.parse(queries,fields,analyzer);
                     TopDocs topHits;
@@ -145,7 +151,7 @@ public class Predictor {
                     System.out.println("Hits for issue "+issue.getId()+": "+ hits.length);
                     for(int i=0; i<hits.length; i++){
                         System.out.println(hits[i]);
-                        Document doc = searcher.storedFields().document(i);
+                        Document doc = searcher.storedFields().document(hits[i].doc);
                         String score = "Issue ID: " + doc.get("id") + " Score: " + hits[i].score;
                         results.add(score);
                     }
