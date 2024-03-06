@@ -28,7 +28,7 @@ public class WebScraper{
                 String filePath = resources + File.separator + f + ".csv";
                 File file = new File(filePath);
                 Files.deleteIfExists(file.toPath());// To avoid unique name conflicts, we delete the .csv if it already exists 
-                Document doc = Jsoup.connect(urlMain).get();
+                Document doc = tryConnection(urlMain);
                 if(row != -1 && column != -1){
                     getIssuesDocument(doc, filePath, row, column);
                 }else{
@@ -78,13 +78,13 @@ public class WebScraper{
      */
     private static void getIssuesDocument(Document doc, String path, Integer row , Integer column){
         Element table = doc.selectFirst("div div table table tbody");
-        Element resolvedFixedCell = table.select("tr").get(row).select("td").get(column);
-        Element auxLinkCell = resolvedFixedCell.selectFirst("a");
-        if(auxLinkCell!=null){
-            String auxLink = auxLinkCell.attr("abs:href");
-            Document auxDoc = tryConnection(auxLink);
-            String link = auxDoc.getElementsByClass("buglist_menu").first().getElementsByClass("bz_query_links").first().selectFirst("a").attr("abs:href");
-            downloadCSV(link, path);
+        Element cell = table.select("tr").get(row).select("td").get(column);
+        Element cellLink = cell.selectFirst("a");
+        if(cellLink!=null){
+            String url = cellLink.attr("abs:href");
+            Document auxDoc = tryConnection(url);
+            String downloadLink = auxDoc.getElementsByClass("buglist_menu").first().getElementsByClass("bz_query_links").first().selectFirst("a").attr("abs:href");
+            downloadCSV(downloadLink, path);
         }else{
             System.out.println("No link found for the document "+ path.split("/")[1]);
         }
@@ -101,9 +101,16 @@ public class WebScraper{
 
     public static Document tryConnection(String link){
         try{
-            return Jsoup.connect(link).timeout(60*1000).get();
-        } catch (IOException e) {
-            System.err.println("No se pudo conectar a " + link + ": " + e.getMessage());
+            Document doc = Jsoup.connect(link).timeout(60*1000).get();
+            Thread.sleep(1000);
+            return doc;
+        } catch (InterruptedException e) {
+            System.err.println("The thread execution has been interrupted: " + e.getMessage());
+            e.printStackTrace();
+            Thread.currentThread().interrupt();
+            return new Document("");
+        }catch (IOException e) {
+            System.err.println("Can't conect to  " + link + ": " + e.getMessage());
             return new Document("");
         }
     }
