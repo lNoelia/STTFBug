@@ -65,12 +65,17 @@ public class Predictor {
             String[] stopWords = properties.getProperty("analyzer.stopwords").split(",");
             CharArraySet sWSet = new CharArraySet(Arrays.asList(stopWords), true);
             try(StandardAnalyzer analyzer = new StandardAnalyzer(sWSet)) {
-                String filePath = properties.getProperty("lucene.directorypath");
-                File file = new File(filePath);
-                if(file.exists())
-                    try{FileUtils.deleteDirectory(file);}
-                    catch(IOException e){e.printStackTrace();}//Prints the stack trace of the exception if the same method is called again but works (?)
-                try (Directory dir = FSDirectory.open(Paths.get(filePath))) {
+                String luceneDirPath = properties.getProperty("lucene.directorypath");//LUCENE DIRECTORY PATH
+                File luceneDir = new File(luceneDirPath);
+                if(luceneDir.exists() && luceneDir.isDirectory()&& luceneDir.list().length>0){
+                    try{FileUtils.forceDelete(luceneDir);
+                        if(!luceneDir.exists()){
+                            System.out.println("Old Lucene directory deleted");
+                        }
+                    }
+                    catch(IOException e){e.printStackTrace();}
+                }
+                try (Directory dir = FSDirectory.open(Paths.get(luceneDirPath))) {
                     IndexWriterConfig config = new IndexWriterConfig(analyzer);
                     config.setSimilarity(new BM25Similarity());
                     try {
@@ -92,6 +97,7 @@ public class Predictor {
             try(BufferedReader br = new BufferedReader(new FileReader(filePath))){
                 String line;
                 Long i=0L;
+                System.out.println(filePath);
                 Long lines = Files.lines(new File(filePath).toPath()).count()-1;
                 while ((line = br.readLine()) != null) {
                     i++;
@@ -155,6 +161,7 @@ public class Predictor {
                         String score = "Issue ID: " + doc.get("id") + " Score: " + hits[i].score;
                         results.add(score);
                     }
+                    reader.close();
                 } catch (ParseException e) {
                     e.printStackTrace();
                 }
