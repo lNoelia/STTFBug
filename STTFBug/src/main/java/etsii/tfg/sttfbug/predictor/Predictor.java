@@ -2,8 +2,8 @@ package etsii.tfg.sttfbug.predictor;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.stream.Stream;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.lucene.analysis.CharArraySet;
@@ -94,27 +95,33 @@ public class Predictor {
         }
 
         private static void writeIssues(IndexWriter writer, String filePath) {
-            try(BufferedReader br = new BufferedReader(new FileReader(filePath))){
+            try(BufferedReader br = Files.newBufferedReader(new File(filePath).toPath(), StandardCharsets.UTF_8)){
                 String line;
                 Long i=0L;
                 System.out.println(filePath);
-                Long lines = Files.lines(new File(filePath).toPath()).count()-1;
-                while ((line = br.readLine()) != null) {
-                    i++;
-                    if(!line.contains("\"ID\",\"Start Date\",\"End Date\",\"Title\",\"Description\"") && i<lines){
-                        List<String> issue = List.of(line.split("\",\""));
-                        StringBuilder description = new StringBuilder(issue.get(4));
-                        description.deleteCharAt(description.length()-1);
-                        Document doc = new Document();
-                        doc.add(new StringField("id", issue.get(0).replace("\"", "") ,Field.Store.YES));
-                        doc.add(new TextField("title", issue.get(3), Field.Store.YES));
-                        doc.add(new TextField("description", description.toString(), Field.Store.YES));
-                        writer.addDocument(doc);
+                try (Stream<String> lines = Files.lines(Paths.get(filePath))) {
+                    Long nLines = lines.count() - 1;
+                    while ((line = br.readLine()) != null) {
+                        i++;
+                        if(!line.contains("\"ID\",\"Start Date\",\"End Date\",\"Title\",\"Description\"") && i<nLines){
+                            List<String> issue = List.of(line.split("\",\""));
+                            StringBuilder description = new StringBuilder(issue.get(4));
+                            description.deleteCharAt(description.length()-1);
+                            Document doc = new Document();
+                            doc.add(new StringField("id", issue.get(0).replace("\"", "") ,Field.Store.YES));
+                            doc.add(new TextField("title", issue.get(3), Field.Store.YES));
+                            doc.add(new TextField("description", description.toString(), Field.Store.YES));
+                            writer.addDocument(doc);
+                        }
                     }
+                    
+                    System.out.println("Number of issues processed: "+(i-1));
+                    System.out.println("Training set populated");
+                }catch(IOException e){
+                    System.err.println("Could not read "+filePath +" file ");
+                    e.printStackTrace();
                 }
-                System.out.println("Number of issues processed: "+(i-1));
-                System.out.println("Training set populated");
-            }catch(IOException e){
+            } catch (IOException e) {
                 e.printStackTrace();
                 System.err.println("Could not find \"FILTERED_ISSUES.csv\" file ");
             }
@@ -173,7 +180,7 @@ public class Predictor {
             return results;
         }
         private static String escapeSpecialCharacters(String query) {
-            query = query.replaceAll("([\\[\\](){}+\\-'\"/])", "\\\\$1");
+            query = query.replaceAll("([\\[\\](){}+\\-'\"/<>])", "\\\\$1");
             return query;
         }
     

@@ -1,13 +1,16 @@
 package etsii.tfg.sttfbug.issues;
 
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.stream.Stream;
 
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -19,12 +22,13 @@ public class IssueFilter {
 
     private static String ISSUE_URL = "https://bugs.eclipse.org/bugs/show_bug.cgi?id=";
     private static String ISSUE_HISTORY_URL = "https://bugs.eclipse.org/bugs/show_activity.cgi?id=";
-    public static Integer numberReopenedIssues = 0;
+    private static Integer numberReopenedIssues = 0;
 
     /**
      * Creates a .csv file with a list of issues with the information we need for the TTF estimator. 
      */
     public static void getListAllIssues(Properties properties){
+        numberReopenedIssues = 0; // Resets the number of reopened issues in case the method is called more than once
         List<String> lfiles = getlistFiles(properties.getProperty("issues.list.documents"), properties);
         Integer maxIssues =calculateMaxIssues(properties,lfiles);
         System.out.println("Issues to be processed: "+maxIssues);
@@ -75,8 +79,10 @@ public class IssueFilter {
         Long totalIssues = 0L;
         for(String file : lfiles){
             try{
-                Long lines = Files.lines(new File(file).toPath()).count()-1;
-                totalIssues+=lines;
+                Stream<String> lines = Files.lines(new File(file).toPath());
+                Long nlines = lines.count()-1;
+                lines.close();
+                totalIssues+=nlines;
             } catch (IOException e) {
                 System.err.println("File "+file+" does not exists : " + e.getMessage());
                 e.printStackTrace();
@@ -123,8 +129,9 @@ public class IssueFilter {
 
     private static void writeCSV(List<Issue> issues, String path){
         System.out.println("Generating CSV file");
-        String csvFilePath = path;
-        try (CSVWriter writer = new CSVWriter(new FileWriter(csvFilePath), ',', '"', '"', "\r\n")){
+        
+        try (OutputStreamWriter oWriter = new OutputStreamWriter(new FileOutputStream(path), StandardCharsets.UTF_8)){
+            CSVWriter writer = new CSVWriter(oWriter, ',', '"', '"', "\r\n");
             String[] header = {"ID", "Start Date", "End Date", "Title", "Description"};
             writer.writeNext(header);
             for (Issue issue : issues) {
@@ -137,7 +144,8 @@ public class IssueFilter {
                 };
                 writer.writeNext(data);
             }
-            System.out.println("CSV file created at: " + csvFilePath);
+            System.out.println("CSV file created at: " + path);
+            writer.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -278,7 +286,7 @@ public class IssueFilter {
         List<Issue> filteredIssues = new ArrayList<>();
         for(Issue issue : issues){
             if(isIssueValid(issue, properties)){
-                if(isAValidTime(issue)){//This check has to be outside because of conflicts when comparing null values
+                if(isAValidTime(issue,properties)){//This check has to be outside because of conflicts when comparing null values
                     filteredIssues.add(issue);
                 }
             }
@@ -308,9 +316,14 @@ public class IssueFilter {
         }
     }
 
-    private static boolean isAValidTime(Issue issue){
-        return issue.getStartDate().compareTo(issue.getEndDate()) < 0 && issue.getEndDate().compareTo(ZonedDateTime.now()) < 0 
+    private static boolean isAValidTime(Issue issue, Properties properties){
+        if(Boolean.parseBoolean(properties.getProperty("isValidTime"))){
+            return issue.getStartDate().compareTo(issue.getEndDate()) < 0 && issue.getEndDate().compareTo(ZonedDateTime.now()) < 0 
             && issue.getTimeSpent() > 5;
+        }
+        else{
+            return true;
+        }
     }
 
 }
