@@ -28,7 +28,6 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -41,27 +40,6 @@ import etsii.tfg.sttfbug.issues.IssueType;
 import etsii.tfg.sttfbug.issues.WebScraper;
 
 public class Predictor {
-        /*
-         * Planteamiento:
-         * 
-         * Tenemos que tener en cuenta 2 partes, la función y la evaluación de la función.
-         * 
-         * Para la función deberíamos seguir los siguientes puntos:
-         * Esta parte a su vez se subdivide en 2 partes, primero debemos popular el training set y a continuación,
-         * comenzamos la gestión de la nueva issue leemos la issue del fichero(conseguimos sus datos #PorDeterminarMetodo) 
-         * y filtramos la lista de palabras comunes en ingles.
-         * Después, convertimos la issue filtrada en una query(definición de la consulta) y a continuación 
-         * aplicamos la comparación entre la query y el training set que tenemos y devolvemos las 3 issues (ID + Tiempo + Semejanza/similitud)
-         * 
-         * Para la evaluación de la función debemos tener en cuenta lo siguiente:
-         * Primero, debemos leer el fichero de issues y filtrar las palabras comunes en ingles.(Igual)
-         * Después convertimos la issue en una query y la comparamos con el training set, pero en este caso,
-         * al finalizar tenemos que hacer el cálculo de la precisión de la predicción, es decir el AAR (Average absolute residual)
-         * la diferencia entre el tiempo predicho y el tiempo real.
-         * 
-         * En la evaluación hay que tener en cuenta que el training set va creciendo a medida que se van añadiendo las issues y 
-         * hay que seguir las indicaciones del paper para completar la evaluación.
-         */
         public static void populateTrainingSet(Properties properties){
             String[] stopWords = properties.getProperty("analyzer.stopwords").split(",");
             CharArraySet sWSet = new CharArraySet(Arrays.asList(stopWords), true);
@@ -78,7 +56,7 @@ public class Predictor {
                 }
                 try (Directory dir = FSDirectory.open(Paths.get(luceneDirPath))) {
                     IndexWriterConfig config = new IndexWriterConfig(analyzer);
-                    config.setSimilarity(new BM25Similarity());
+                    config.setSimilarity(new ClassicSimilarity());
                     try {
                         IndexWriter writer = new IndexWriter(dir, config);
                         writeIssues(writer, properties.getProperty("filteredissue.path"));
@@ -109,8 +87,8 @@ public class Predictor {
                             description.deleteCharAt(description.length()-1);
                             Document doc = new Document();
                             doc.add(new StringField("id", issue.get(0).replace("\"", "") ,Field.Store.YES));
-                            doc.add(new TextField("title", issue.get(3), Field.Store.YES));
-                            doc.add(new TextField("description", description.toString(), Field.Store.YES));
+                            doc.add(new TextField("title", escapeSpecialCharacters(issue.get(3)), Field.Store.YES));
+                            doc.add(new TextField("description", escapeSpecialCharacters(description.toString()), Field.Store.YES));
                             writer.addDocument(doc);
                         }
                     }
@@ -135,10 +113,11 @@ public class Predictor {
                 String link = issueUrl+id;
                 org.jsoup.nodes.Document doc = WebScraper.tryConnection(link);
                 Issue issue = IssueFilter.getIssue(doc, id, IssueType.PREDICT);
-                result.add(predictTimeToFix(issue,dir,analyzer));
+                result.add(predictTimeToFix(issue,dir,analyzer,properties));
             }
             Integer k = Integer.valueOf(properties.getProperty("issues.neighbor"));
-            for(int i=0;i<k;i++){
+            for(int i=0;i<issuesID.size();i++){
+                System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
                 System.out.println(String.format("Showing the %d closests neighbors for issue %s", k, issuesID.get(i)));
                 for(String s: result.get(i)){
                     System.out.println(s);
@@ -146,12 +125,13 @@ public class Predictor {
             }
         }
 
-        private static List<String> predictTimeToFix(Issue issue, Directory dir, StandardAnalyzer analyzer) {            
+        private static List<String> predictTimeToFix(Issue issue, Directory dir, StandardAnalyzer analyzer, Properties properties) {            
             List<String> results = new ArrayList<>();
             try {
                 IndexReader reader = DirectoryReader.open(dir);
                 IndexSearcher searcher = new IndexSearcher(reader);
-                searcher.setSimilarity(new BM25Similarity());
+                IndexSearcher.setMaxClauseCount(Integer.valueOf(properties.getProperty("max.clause.count")));
+                searcher.setSimilarity(new ClassicSimilarity());
                 String[] fields = {"title", "description"};
                 String[] queries =  {escapeSpecialCharacters(issue.getTitle()), escapeSpecialCharacters(issue.getDescription())};
                 Map<String, Float> boosts = Map.of("title", 1.0f, "description", 1.0f);
@@ -161,9 +141,8 @@ public class Predictor {
                     TopDocs topHits;
                     topHits = searcher.search(query, 3);
                     ScoreDoc[] hits = topHits.scoreDocs;
-                    System.out.println("Hits for issue "+issue.getId()+": "+ hits.length);
+                    System.out.println("Hits for issue "+issue.getId()+": "+ hits.length); 
                     for(int i=0; i<hits.length; i++){
-                        System.out.println(hits[i]);
                         Document doc = searcher.storedFields().document(hits[i].doc);
                         String score = "Issue ID: " + doc.get("id") + " Score: " + hits[i].score;
                         results.add(score);
@@ -179,8 +158,9 @@ public class Predictor {
             
             return results;
         }
+        
         private static String escapeSpecialCharacters(String query) {
-            query = query.replaceAll("([\\[\\](){}+\\-'\"/<>])", "\\\\$1");
+            query = query.replaceAll("([\\[\\](){}+\\-'\"/<>:;])", "\\\\$1"); // escape special characters
             return query;
         }
     

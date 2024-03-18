@@ -102,7 +102,7 @@ public class WebScraper{
     public static Document tryConnection(String link){
         try{
             Document doc = Jsoup.connect(link).timeout(60*1000).get();
-            Thread.sleep(1000);
+            Thread.sleep(0);
             return doc;
         } catch (InterruptedException e) {
             System.err.println("The thread execution has been interrupted: " + e.getMessage());

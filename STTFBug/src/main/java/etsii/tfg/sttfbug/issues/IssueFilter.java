@@ -317,7 +317,7 @@ public class IssueFilter {
     }
 
     private static boolean isAValidTime(Issue issue, Properties properties){
-        if(Boolean.parseBoolean(properties.getProperty("isValidTime"))){
+        if(Boolean.parseBoolean(properties.getProperty("time.isvalid"))){
             return issue.getStartDate().compareTo(issue.getEndDate()) < 0 && issue.getEndDate().compareTo(ZonedDateTime.now()) < 0 
             && issue.getTimeSpent() > 5;
         }
