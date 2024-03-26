@@ -3,6 +3,7 @@ package etsii.tfg.sttfbug.predictor;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -24,6 +25,10 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.queries.mlt.MoreLikeThis;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -78,10 +83,10 @@ public class Predictor {
                 Long i=0L;
                 System.out.println(filePath);
                 try (Stream<String> lines = Files.lines(Paths.get(filePath))) {
-                    Long nLines = lines.count() - 1;
+                    Long nLines = lines.count();
                     while ((line = br.readLine()) != null) {
                         i++;
-                        if(!line.contains("\"ID\",\"Start Date\",\"End Date\",\"Title\",\"Description\"") && i<nLines){
+                        if(!line.contains("\"ID\",\"Start Date\",\"End Date\",\"Title\",\"Description\"") && i<=nLines){
                             List<String> issue = List.of(line.split("\",\""));
                             StringBuilder description = new StringBuilder(issue.get(4));
                             description.deleteCharAt(description.length()-1);
@@ -93,7 +98,7 @@ public class Predictor {
                         }
                     }
                     
-                    System.out.println("Number of issues processed: "+(i-1));
+                    System.out.println("Number of issues processed: "+(i-1));//-1 because of the last empty line
                     System.out.println("Training set populated");
                 }catch(IOException e){
                     System.err.println("Could not read "+filePath +" file ");
@@ -129,28 +134,45 @@ public class Predictor {
             List<String> results = new ArrayList<>();
             try {
                 IndexReader reader = DirectoryReader.open(dir);
+                Integer numDocs = reader.numDocs();
+                System.out.println("Number of issues: "+numDocs);
                 IndexSearcher searcher = new IndexSearcher(reader);
                 IndexSearcher.setMaxClauseCount(Integer.valueOf(properties.getProperty("max.clause.count")));
                 searcher.setSimilarity(new ClassicSimilarity());
-                String[] fields = {"title", "description"};
-                String[] queries =  {escapeSpecialCharacters(issue.getTitle()), escapeSpecialCharacters(issue.getDescription())};
-                Map<String, Float> boosts = Map.of("title", 1.0f, "description", 1.0f);
-                MultiFieldQueryParser parser = new MultiFieldQueryParser(fields, analyzer,boosts);
-                try {
-                    Query query = parser.parse(queries,fields,analyzer);
-                    TopDocs topHits;
-                    topHits = searcher.search(query, 3);
+                // MoreLikeThis generation
+                MoreLikeThis mlt = new MoreLikeThis(reader);
+                mlt.setAnalyzer(analyzer);
+                mlt.setFieldNames(new String[] {"title", "description"});
+                // Document of the issue to fix
+                Document doc = new Document();
+                doc.add(new TextField("title", escapeSpecialCharacters(issue.getTitle()), Field.Store.YES));
+                doc.add(new TextField("description", escapeSpecialCharacters(issue.getDescription()), Field.Store.YES));
+                // Queries generation
+                Query titleQuery = mlt.like("title", new StringReader(doc.get("title")));
+                Query descriptionQuery = mlt.like("description", new StringReader(doc.get("description")));
+                //Query combination 
+                BooleanQuery combinedQuery = new BooleanQuery.Builder()
+                .add(titleQuery, BooleanClause.Occur.SHOULD)
+                .add(descriptionQuery, BooleanClause.Occur.SHOULD) //review this, right now it doesnt take into account the title
+                .build();
+                // String[] fields = {"title", "description"};
+                // String[] queries =  {escapeSpecialCharacters(issue.getTitle()), escapeSpecialCharacters(issue.getDescription())};
+                // Map<String, Float> boosts = Map.of("title", 1.0f, "description", 1.0f);
+                // MultiFieldQueryParser parser = new MultiFieldQueryParser(fields, analyzer,boosts);
+                //try {
+                    // Query query = parser.parse(queries,fields,analyzer);
+                    TopDocs topHits = searcher.search(combinedQuery, 3);
                     ScoreDoc[] hits = topHits.scoreDocs;
                     System.out.println("Hits for issue "+issue.getId()+": "+ hits.length); 
                     for(int i=0; i<hits.length; i++){
-                        Document doc = searcher.storedFields().document(hits[i].doc);
-                        String score = "Issue ID: " + doc.get("id") + " Score: " + hits[i].score;
+                        Document hitDoc = searcher.storedFields().document(hits[i].doc);
+                        String score = "Issue ID: " + hitDoc.get("id") + " Score: " + hits[i].score;
                         results.add(score);
                     }
                     reader.close();
-                } catch (ParseException e) {
-                    e.printStackTrace();
-                }
+                // } catch (ParseException e) {
+                //     e.printStackTrace();
+                // }
                 
             } catch (IOException e) {
                 System.err.println("Error opening Lucene directory: " + e.getMessage());
