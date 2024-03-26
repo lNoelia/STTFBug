@@ -78,10 +78,10 @@ public class Predictor {
                 Long i=0L;
                 System.out.println(filePath);
                 try (Stream<String> lines = Files.lines(Paths.get(filePath))) {
-                    Long nLines = lines.count() - 1;
+                    Long nLines = lines.count();// Does not count the last empty line
                     while ((line = br.readLine()) != null) {
                         i++;
-                        if(!line.contains("\"ID\",\"Start Date\",\"End Date\",\"Title\",\"Description\"") && i<nLines){
+                        if(!line.contains("\"ID\",\"Start Date\",\"End Date\",\"Title\",\"Description\"") && i<=nLines){
                             List<String> issue = List.of(line.split("\",\""));
                             StringBuilder description = new StringBuilder(issue.get(4));
                             description.deleteCharAt(description.length()-1);
@@ -93,7 +93,7 @@ public class Predictor {
                         }
                     }
                     
-                    System.out.println("Number of issues processed: "+(i-1));
+                    System.out.println("Number of issues processed: "+(i-1)); //-1 because of the header
                     System.out.println("Training set populated");
                 }catch(IOException e){
                     System.err.println("Could not read "+filePath +" file ");
@@ -141,7 +141,6 @@ public class Predictor {
                     TopDocs topHits;
                     topHits = searcher.search(query, 3);
                     ScoreDoc[] hits = topHits.scoreDocs;
-                    System.out.println("Hits for issue "+issue.getId()+": "+ hits.length); 
                     for(int i=0; i<hits.length; i++){
                         Document doc = searcher.storedFields().document(hits[i].doc);
                         String score = "Issue ID: " + doc.get("id") + " Score: " + hits[i].score;
