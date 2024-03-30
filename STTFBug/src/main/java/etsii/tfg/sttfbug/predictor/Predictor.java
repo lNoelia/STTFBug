@@ -81,7 +81,6 @@ public class Predictor {
             try(BufferedReader br = Files.newBufferedReader(new File(filePath).toPath(), StandardCharsets.UTF_8)){
                 String line;
                 Long i=0L;
-                System.out.println(filePath);
                 try (Stream<String> lines = Files.lines(Paths.get(filePath))) {
                     Long nLines = lines.count();
                     while ((line = br.readLine()) != null) {
@@ -134,8 +133,6 @@ public class Predictor {
             List<String> results = new ArrayList<>();
             try {
                 IndexReader reader = DirectoryReader.open(dir);
-                Integer numDocs = reader.numDocs();
-                System.out.println("Number of issues: "+numDocs);
                 IndexSearcher searcher = new IndexSearcher(reader);
                 IndexSearcher.setMaxClauseCount(Integer.valueOf(properties.getProperty("max.clause.count")));
                 searcher.setSimilarity(new ClassicSimilarity());
@@ -161,9 +158,8 @@ public class Predictor {
                 // MultiFieldQueryParser parser = new MultiFieldQueryParser(fields, analyzer,boosts);
                 //try {
                     // Query query = parser.parse(queries,fields,analyzer);
-                    TopDocs topHits = searcher.search(combinedQuery, 3);
+                    TopDocs topHits = searcher.search(combinedQuery, Integer.valueOf(properties.getProperty("issues.neighbor")));
                     ScoreDoc[] hits = topHits.scoreDocs;
-                    System.out.println("Hits for issue "+issue.getId()+": "+ hits.length); 
                     for(int i=0; i<hits.length; i++){
                         Document hitDoc = searcher.storedFields().document(hits[i].doc);
                         String score = "Issue ID: " + hitDoc.get("id") + " Score: " + hits[i].score;
