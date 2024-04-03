@@ -13,7 +13,7 @@ import org.jsoup.nodes.*;
 public class WebScraper{
 
     /**
-     * @return Creates 3 different .csv files with the list of issues that are fixed and resolved(LRF), verified(LVF) or closed(LCF).
+     * @return Creates .csv files with the list of issues that you have selected on the configuration file.
      */
     public static void searchDocs(Properties properties) throws IOException{
         String urlMain= properties.getProperty("url.main");
