@@ -153,8 +153,11 @@ public class Predictor {
             IndexSearcher searcher = new IndexSearcher(reader);
             IndexSearcher.setMaxClauseCount(Integer.valueOf(properties.getProperty("max.clause.count")));
             searcher.setSimilarity(new ClassicSimilarity());
-            // MoreLikeThis generation
+            // MoreLikeThis generation, uses classic similarity by default
+            String [] stopWords = properties.getProperty("analyzer.stopwords").split(",");
+            CharArraySet sWSet = new CharArraySet(Arrays.asList(stopWords), true);
             MoreLikeThis mlt = new MoreLikeThis(reader);
+            mlt.setStopWords(sWSet);
             mlt.setAnalyzer(analyzer);
             mlt.setFieldNames(new String[] { "title", "description" });
             // Document of the issue to fix
