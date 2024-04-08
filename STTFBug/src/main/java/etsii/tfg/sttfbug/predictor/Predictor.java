@@ -180,7 +180,7 @@ public class Predictor {
     }
 
     private static String escapeSpecialCharacters(String query) {
-        query = query.replaceAll("([\\[\\](){}+\\-'\"/<>:;*])", "\\\\$1"); // escape special characters
+        query = query.replaceAll("([\\[\\](){}+\\-'\"/<>:;?*])", "\\\\$1"); // escape special characters
         return query;
     }
 
