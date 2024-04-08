@@ -55,7 +55,20 @@ public class Issue {
         this.id = id;
     }
 
-    public ZonedDateTime convertDate(String strDate){
+    public Issue(Integer id, String title, String description, String startDate, String endDate) {
+        this.id = id;
+        this.title = title;
+        this.description = description;
+        this.startDate = convertDate(startDate);
+        this.endDate = convertDate(endDate);
+    }
+
+    
+
+    public Issue() {
+    }
+
+    public static ZonedDateTime convertDate(String strDate){
         LocalDateTime date = LocalDateTime.parse(strDate, formatter);
         ZoneId zoneNY = ZoneId.of("America/New_York");
         return ZonedDateTime.of(date, zoneNY);
@@ -117,7 +130,10 @@ public class Issue {
         return text.replaceAll("\\r?\\n", " ");
     }
 
+    /*
+     * Returns the time spent between the start and end date of the issue in days
+     */
     public Long getTimeSpent(){
-        return Duration.between(startDate, endDate).toMinutes();
+        return Duration.between(startDate, endDate).toHours();
     }
 }
