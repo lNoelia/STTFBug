@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.io.FileUtils;
@@ -26,6 +27,8 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
+import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -33,8 +36,6 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
-import org.apache.lucene.queryparser.classic.ParseException;
 
 import etsii.tfg.sttfbug.issues.Issue;
 import etsii.tfg.sttfbug.issues.IssueFilter;
@@ -116,28 +117,53 @@ public class Predictor {
 
     public static void predictTTFIssues(Properties properties, Directory dir, StandardAnalyzer analyzer) {
         List<List<HashMap<String, String>>> result = new ArrayList<>();
-        List<String> issuesID = List.of(properties.getProperty("predict.issue.list").split(","));
-        String issueUrl = properties.getProperty("url.issue");
-        for (String id : issuesID) {
-            String link = issueUrl + id;
-            org.jsoup.nodes.Document doc = WebScraper.tryConnection(link);
-            Issue issue = IssueFilter.getIssue(doc, id, IssueType.PREDICT);
-            result.add(predictTimeToFix(issue, dir, analyzer, properties));
-        }
-        Integer k = Integer.valueOf(properties.getProperty("issues.neighbor"));
-        for (int i = 0; i < issuesID.size(); i++) { // For each issue to predict
-            System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-            System.out.println(String.format("Showing the %d closests neighbors for issue %s", k, issuesID.get(i)));
-            Float predictedTime = 0.0f;
-            for (HashMap<String, String> s : result.get(i)) { // For each neighbor
-                String score = "Issue ID: " + s.get("id") + " Score: " + s.get("score") +
-                        " Time to fix: " + s.get("ttf") + " hours";
-                predictedTime += Float.valueOf(s.get("ttf"));
-                System.out.println(score);
+        String filePath = properties.getProperty("predict.issue.file"); // File where the issues to be predicted are
+        try (BufferedReader br = Files.newBufferedReader(new File(filePath).toPath(), StandardCharsets.UTF_8)) {
+            //ISSUE PREDICTION
+            Stream<String> lines = br.lines().skip(1);
+            List<String> issuesID = lines.map(line -> line.split(",")[0].replace("\"", "")).collect(Collectors.toList());
+            String issueUrl = properties.getProperty("url.issue");
+            for (String id : issuesID) {
+                String link = issueUrl + id;
+                org.jsoup.nodes.Document doc = WebScraper.tryConnection(link);
+                Issue issue = IssueFilter.getIssue(doc, id, IssueType.PREDICT);
+                result.add(predictTimeToFix(issue, dir, analyzer, properties));
             }
-            predictedTime = predictedTime / k;
-            System.out.println(
-                    "The predicted time to fix for issue " + issuesID.get(i) + " is: " + predictedTime + " hours.");
+            // PRINTING RESULTS + WRITING RESULTS IN FILE
+            Integer k = Integer.valueOf(properties.getProperty("issues.neighbor"));
+            String resultPath = properties.getProperty("result.predictions.file");
+            StringBuilder csvContent = new StringBuilder();
+            for (int i = 0; i < issuesID.size(); i++) { // For each issue to predict
+                //Print on console
+                System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+                String title = String.format("Showing the %d closests neighbors for issue %s", k, issuesID.get(i));
+                System.out.println(title);
+                csvContent.append(title+"\n");
+                Float predictedTime = 0.0f;
+                for (HashMap<String, String> s : result.get(i)) { // For each neighbor
+                    String score = "Issue ID: " + s.get("id") + " Score: " + s.get("score") +
+                            " Time to fix: " + s.get("ttf") + " hours";
+                    predictedTime += Float.valueOf(s.get("ttf"));
+                    System.out.println(score);
+                    csvContent.append(score+"\n");//Adding each neighbor score to file
+                }
+                predictedTime = predictedTime / k; // hours
+                String prediction = "The predicted time to fix for issue " + issuesID.get(i) + " is: " + predictedTime + " hours. ("
+                + predictedTime/24 + " days)";
+                System.out.println(prediction);
+                csvContent.append(prediction+"\n");
+                csvContent.append("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+                //Writing the prediction in the file
+                try {
+                    FileUtils.writeStringToFile(new File(resultPath), csvContent.toString(), StandardCharsets.UTF_8);
+                    System.out.println("Result CSV file created successfully!");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.err.println("Could not find \"PREDICT_ISSUES.csv\" file ");
         }
     }
 
