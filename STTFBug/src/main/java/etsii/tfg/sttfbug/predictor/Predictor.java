@@ -111,7 +111,7 @@ public class Predictor {
             }
         } catch (IOException e) {
             e.printStackTrace();
-            System.err.println("Could not find \"FILTERED_ISSUES.csv\" file ");
+            System.err.println("Could not find the filtered issue file");
         }
     }
 
@@ -205,7 +205,7 @@ public class Predictor {
         return results;
     }
 
-    private static String escapeSpecialCharacters(String query) {
+    public static String escapeSpecialCharacters(String query) {
         query = query.replaceAll("([\\[\\](){}+\\-'\"/<>:;?*])", "\\\\$1"); // escape special characters
         return query;
     }

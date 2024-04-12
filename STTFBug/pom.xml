@@ -63,6 +63,28 @@
             <artifactId>commons-math3</artifactId>
             <version>3.6.1</version>
         </dependency>
+
+        <!-- Weka -->
+        <dependency>
+            <groupId>nz.ac.waikato.cms.weka</groupId>
+            <artifactId>weka-dev</artifactId>
+            <version>3.9.6</version> 
+        </dependency>
+
+        <!-- ARPACK used by Weka -->
+        <dependency>
+            <groupId>com.github.fommil.netlib</groupId>
+            <artifactId>native_system-java</artifactId>
+            <version>1.1</version>
+        </dependency>
+
+
+        <!-- JNI Loader used by Weka -->
+        <dependency>
+            <groupId>com.github.fommil</groupId>
+            <artifactId>jniloader</artifactId>
+            <version>1.1</version>
+        </dependency>
     </dependencies>
 
     <build>
