@@ -198,9 +198,17 @@ public class Evaluator {
             IndexSearcher searcher = new IndexSearcher(reader);
             IndexSearcher.setMaxClauseCount(Integer.valueOf(properties.getProperty("max.clause.count")));
             searcher.setSimilarity(new ClassicSimilarity());
-            String[] fields = { "title", "description" };
-            String[] queries = { Predictor.escapeSpecialCharacters(issue.getTitle()),
-                Predictor.escapeSpecialCharacters(issue.getDescription()) };
+            String[] fields;
+            String[] queries;
+            // Since Descriptions can be an empty field, we need to check if is empty to not add it to the query
+            if(issue.getDescription().isEmpty()){
+                fields = new String[] { "title" };
+                queries = new String[] { Predictor.escapeSpecialCharacters(issue.getTitle().trim()) };
+            }else{
+                fields = new String[] { "title", "description" };
+                queries = new String[] { Predictor.escapeSpecialCharacters(issue.getTitle().trim()),
+                    Predictor.escapeSpecialCharacters(issue.getDescription().trim()) };
+            }
             Map<String, Float> boosts = Map.of("title", 1.0f, "description", 1.0f);
             MultiFieldQueryParser parser = new MultiFieldQueryParser(fields, analyzer, boosts);
             try {
@@ -218,6 +226,7 @@ public class Evaluator {
                 }
                 reader.close();
             } catch (ParseException e) {
+                System.out.println("Error parsing the query: " + issue.getId() + " Description:" + issue.getDescription());
                 e.printStackTrace();
             }
 
@@ -236,10 +245,17 @@ public class Evaluator {
                 String line;
                 while ((line = br.readLine()) != null) {
                     List<String> lineSplit = Arrays.asList(line.split("\",\"")); // Splitting the line by ","
+                    if(lineSplit.get(4).length() >20000) {
+                        continue;} //If the description is too long, we skip this issue. 
+                    // THIS SHOULD NOT BE DONE HERE, JUST FOR TESTING PURPOSES. SHOULD BE DONE BEFORE SPLITTING IN FOLDS
+                    if(lineSplit.get(4).length()== 0) {
+                        lineSplit.set(4 , " ");
+                    }
                     lineSplit.set(3, lineSplit.get(3).replace(",", "\\,").replace("'","\\'")); // In the string, we replace every , with \, and every ' with \'
                     lineSplit.set(4, lineSplit.get(4).replace(",", "\\,").replace("'","\\'"));
                     for( int i = 0; i<lineSplit.size();i++) {
                         lineSplit.set(i, lineSplit.get(i).replace("\"", "\\\"")); // On every field we replace every " with \"
+                        lineSplit.set(i, lineSplit.get(i).replace("\n", ""));
                     }
                     lineSplit.set(0, lineSplit.get(0).replace("\\\"", ""));
                     lineSplit.set(4, "\""+lineSplit.get(4).substring(0, lineSplit.get(4).length()-2)+"\"");

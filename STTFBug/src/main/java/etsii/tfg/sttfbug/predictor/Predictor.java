@@ -206,7 +206,8 @@ public class Predictor {
     }
 
     public static String escapeSpecialCharacters(String query) {
-        query = query.replaceAll("([\\[\\](){}+\\-'\"/<>:;?*])", "\\\\$1"); // escape special characters
+        query = query.replaceAll("([\\[\\](){}+\"\\-'/!~&^<>:;?*])", "\\\\$1"); // escape special characters
+        // This characters are not allowed in the query, so we have to escape them
         return query;
     }
 

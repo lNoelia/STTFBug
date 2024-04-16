@@ -268,7 +268,7 @@ public class IssueFilter {
         // Description
         Element commentTable = formElement.getElementsByClass("bz_comment_table").get(0);
         Element descriptionElement = commentTable.getElementById("c0").select("pre").get(0);
-        issue.setDescription(descriptionElement.text());
+        issue.setDescription(descriptionElement.text().replaceAll("\\s+", " "));
         if(type.equals(IssueType.TRAINING)){
             // Start date
             Element centralTable = formElement.selectFirst("table tbody tr");
@@ -298,7 +298,7 @@ public class IssueFilter {
         String[] fields = properties.getProperty("issue.fields").split(",");
         for (String key : fields) {
             boolean shouldNotBeNull = Boolean.parseBoolean(properties.getProperty("notnull."+key));
-            if (shouldNotBeNull && getProperty(issue, key) == null) {
+            if (shouldNotBeNull && (getProperty(issue, key) == null || getProperty(issue, key).toString().length()==0) ){
                 return false; // Issue does not meet criteria
             }
         }
