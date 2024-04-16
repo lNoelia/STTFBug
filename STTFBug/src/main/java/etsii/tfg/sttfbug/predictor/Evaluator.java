@@ -7,7 +7,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -75,6 +74,8 @@ public class Evaluator {
 
                 // CALCULATE EVALUATION METRICS FOR EACH FOLD 
                 // Use 
+                // Aquí deberíamos eliminar los archivos de _EVALX.csv ya que no son utiles y ocupan espacio, sólo queremos
+                // obtener los resultados, calcular las métricas y guardarlas en un archivo.
             }
             // Return the evaluation metrics for all the number of folds  (numFolds)
             // TO DO - FORMATO DE SALIDA DE LOS RESULTADOS 
@@ -158,7 +159,7 @@ public class Evaluator {
         for (Integer id : issuesID) {
             String link = issueUrl + id.toString();
             org.jsoup.nodes.Document doc = WebScraper.tryConnection(link);
-            Issue issue = IssueFilter.getIssue(doc, id.toString(), IssueType.PREDICT);
+            Issue issue = IssueFilter.getIssue(doc, id.toString(), IssueType.TRAINING);
             result.add(predictTimeToFix(issue, dir, analyzer, properties));
         }
         // PRINTING RESULTS + WRITING RESULTS IN FILE
@@ -169,16 +170,21 @@ public class Evaluator {
             String title = String.format("Showing the %d closests neighbors for issue %s", k, issuesID.get(i));
             csvContent.append(title+"\n");
             Float predictedTime = 0.0f;
+            Float realTTF = 0.0f;
             for (HashMap<String, String> s : result.get(i)) { // For each neighbor
                 String score = "Issue ID: " + s.get("id") + " Score: " + s.get("score") +
                         " Time to fix: " + s.get("ttf") + " hours";
                 predictedTime += Float.valueOf(s.get("ttf"));
+                realTTF = Float.valueOf(s.get("realTTF"));
                 csvContent.append(score+"\n");//Adding each neighbor score to file
             }
             predictedTime = predictedTime / k; // hours
             String prediction = "The predicted time to fix for issue " + issuesID.get(i) + " is: " + predictedTime + " hours. ("
             + predictedTime/24 + " days)";
             csvContent.append(prediction+"\n");
+            Float timediff= predictedTime - realTTF; // We dont use absolute cause we want to know if we are over or underestimating
+            csvContent.append("Real TTF: "+ realTTF.toString() + " hours ( " + realTTF/24 + " days)\n");
+            csvContent.append("\u2206TTF (Time difference): "+ timediff.toString() + " hours ( " + timediff/24 + " days)\n");
             csvContent.append("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
             //Writing the prediction in the file
             try {
@@ -216,12 +222,13 @@ public class Evaluator {
                 TopDocs topHits;
                 topHits = searcher.search(query, 3);
                 ScoreDoc[] hits = topHits.scoreDocs;
-                for (int i = 0; i < hits.length; i++) {
+                for (int i = 0; i < hits.length; i++) { // For each neighbor
                     HashMap<String, String> result = new HashMap<>();
                     Document doc = searcher.storedFields().document(hits[i].doc);
                     result.put("id", doc.get("id"));
                     result.put("score", String.valueOf(hits[i].score));
                     result.put("ttf", doc.getField("ttf").numericValue().toString());
+                    result.put("realTTF", issue.getTimeSpent().toString());
                     results.add(result);
                 }
                 reader.close();
