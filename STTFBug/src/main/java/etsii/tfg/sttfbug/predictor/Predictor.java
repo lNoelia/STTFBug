@@ -29,6 +29,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -207,7 +208,9 @@ public class Predictor {
 
     public static String escapeSpecialCharacters(String query) {
         query = query.replaceAll("([\\[\\](){}+\"\\-'/!~&^<>:;?*])", "\\\\$1"); // escape special characters
+        query = query.replace("\\n", " ").replace("\\u", "\\\\u"); // We also need to escape unicode indicator
         // This characters are not allowed in the query, so we have to escape them
+        query = QueryParser.escape(query);
         return query;
     }
 

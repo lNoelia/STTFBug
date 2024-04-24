@@ -298,7 +298,7 @@ public class IssueFilter {
         String[] fields = properties.getProperty("issue.fields").split(",");
         for (String key : fields) {
             boolean shouldNotBeNull = Boolean.parseBoolean(properties.getProperty("notnull."+key));
-            if (shouldNotBeNull && (getProperty(issue, key) == null || getProperty(issue, key).toString().length()==0) ){
+            if (shouldNotBeNull && getProperty(issue, key) == null){
                 return false; // Issue does not meet criteria
             }
         }

@@ -1,15 +1,14 @@
 package etsii.tfg.sttfbug.predictor;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,52 +40,71 @@ import etsii.tfg.sttfbug.issues.Issue;
 import etsii.tfg.sttfbug.issues.IssueFilter;
 import etsii.tfg.sttfbug.issues.IssueType;
 import etsii.tfg.sttfbug.issues.WebScraper;
-import weka.classifiers.evaluation.Evaluation;
-import weka.core.Attribute;
-import weka.core.Instance;
-import weka.core.Instances;
-import weka.core.converters.CSVLoader;
 
 public class Evaluator {
 
-    public static void evaluatePredictor(Properties properties){
-        try {
-            String issueFile = getCleanFilePath(properties); // Prepares data to read it (removes first line)
-            // Load the data from the CSV file
-            //String issueFile = properties.getProperty("filteredissue.path");
-            CSVLoader loader = new CSVLoader();
-            loader.setSource(new File(issueFile));
-            Instances dataset = loader.getDataSet();
-            if (dataset.classIndex() == -1){ // Setting Weka's class index, but won't be used since we are not using Weka's classifiers
-                dataset.setClassIndex(0);
-            }
-            //Creating the evaluation object
-            Evaluation eval = new Evaluation(dataset);
-            int numFolds = 3; // Static, should be a list of values (e.g 3,5,7)
+    public static void evaluatePredictor(Properties properties) {
+        String issueFile = properties.getProperty("filteredissue.path");
+        // Load the data from the CSV file
+        List<String[]> data = loadDataFromCSV(issueFile);
 
-            // EVALUATION OF EACH FOLD
-            for (int fold = 0; fold < numFolds; fold++) { // Each fold, we will iterate and consider one of the folds 
-                Instances trainingSet = dataset.trainCV(numFolds, fold); //Creates the training set for the current fold. 
-                Instances testSet = dataset.testCV(numFolds, fold); 
-                System.out.println("Number of instances for the training set: " + trainingSet.numInstances());
-                System.out.println("Number of instances for the testing set: " + testSet.numInstances());
-                populateTrainingSet(properties, trainingSet, testSet, fold); 
+        int numFolds = 3; // Number of folds TO DO NOT STATIC
+        List<List<String[]>> folds = splitDataIntoFolds(data, numFolds);
 
-                // CALCULATE EVALUATION METRICS FOR EACH FOLD 
-                // Use 
-                // Aquí deberíamos eliminar los archivos de _EVALX.csv ya que no son utiles y ocupan espacio, sólo queremos
-                // obtener los resultados, calcular las métricas y guardarlas en un archivo.
-            }
-            // Return the evaluation metrics for all the number of folds  (numFolds)
-            // TO DO - FORMATO DE SALIDA DE LOS RESULTADOS 
+        // EVALUATION OF EACH FOLD
+        for (int fold = 0; fold < numFolds; fold++) {
+            List<String[]> trainingSet = combineFolds(folds, fold);
+            List<String[]> testSet = folds.get(fold);
 
-        } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("Number of instances for the training set: " + trainingSet.size());
+            System.out.println("Number of instances for the testing set: " + testSet.size());
+
+            populateTrainingSet(properties, trainingSet, testSet, fold);
+
+            // CALCULATE EVALUATION METRICS FOR EACH FOLD
+            // Use
+            // Aquí deberíamos eliminar los archivos de _EVALX.csv ya que no son utiles y
+            // ocupan espacio, sólo queremos
+            // obtener los resultados, calcular las métricas y guardarlas en un archivo.
         }
+        // Return the evaluation metrics for all the number of folds (numFolds)
+        // TO DO - FORMATO DE SALIDA DE LOS RESULTADOS
     }
 
-    private static void populateTrainingSet(Properties properties, Instances trainingSet, Instances testSet, Integer fold ){ // I have duplicated this method from the Predictor class. Should it be a common method?
-        //Preparing the Lucene directory
+    
+
+    public static List<List<String[]>> splitDataIntoFolds(List<String[]> data, int numFolds) {
+        Collections.shuffle(data); // Shuffle the issues
+        List<List<String[]>> folds = new ArrayList<>();
+        int foldSize = data.size() / numFolds;
+
+        for (int i = 0; i < numFolds; i++) { // Now we split the data into the folds
+            int start = i * foldSize; // Index of the first element of the fold
+            int end = (i == numFolds - 1) ? data.size() : (i + 1) * foldSize;
+            List<String[]> fold = new ArrayList<>(data.subList(start, end));
+            folds.add(fold);
+        }
+        return folds;
+    }
+
+    /*
+     * Auxiliar function to combine all the folds except the one that is being
+     * evaluated
+     * This way we can easily get all the training set for the current fold
+     */
+    public static List<String[]> combineFolds(List<List<String[]>> folds, int excludeFoldIndex) {
+        List<String[]> combined = new ArrayList<>();
+        for (int i = 0; i < folds.size(); i++) {
+            if (i != excludeFoldIndex) {
+                combined.addAll(folds.get(i));
+            }
+        }
+        return combined;
+    }
+
+    private static void populateTrainingSet(Properties properties, List<String[]> trainingSet, List<String[]> testSet,
+            Integer fold) {
+        // Preparing the Lucene directory
         String luceneDirPath = properties.getProperty("lucene.directorypath");// LUCENE DIRECTORY PATH
         File luceneDir = new File(luceneDirPath);
         if (luceneDir.exists() && luceneDir.isDirectory() && luceneDir.list().length > 0) {
@@ -99,7 +117,7 @@ public class Evaluator {
                 e.printStackTrace();
             }
         }
-        //Preparing for lucene indexing 
+        // Preparing for lucene indexing
         String[] stopWords = properties.getProperty("analyzer.stopwords").split(",");
         CharArraySet sWSet = new CharArraySet(Arrays.asList(stopWords), true);
         try (StandardAnalyzer analyzer = new StandardAnalyzer(sWSet)) {
@@ -110,7 +128,7 @@ public class Evaluator {
                     IndexWriter writer = new IndexWriter(dir, config);
                     writeIssues(writer, trainingSet);
                     writer.close();
-                    predictTTFIssues(properties, dir, analyzer, testSet,fold );
+                    predictTTFIssues(properties, dir, analyzer, testSet, fold);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -118,23 +136,18 @@ public class Evaluator {
                 System.err.println("Error opening Lucene directory: " + e.getMessage());
             }
         }
-    
+
     }
-    private static void writeIssues(IndexWriter writer, Instances trainingSet) {
-        Attribute issueID = trainingSet.attribute("ID");
-        Attribute startDate = trainingSet.attribute("Start Date");
-        Attribute endDate = trainingSet.attribute("End Date");
-        Attribute title = trainingSet.attribute("Title");
-        Attribute description = trainingSet.attribute("Description");
-        for (int i = 0; i < trainingSet.numInstances(); i++) {
-            Instance line = trainingSet.get(i);
-            Issue issue = new Issue((int)line.value(issueID),
-            line.stringValue(title).trim(), line.stringValue(description).trim(), line.stringValue(startDate).trim(), line.stringValue(endDate).trim());
+
+    private static void writeIssues(IndexWriter writer, List<String[]> trainingSet) {
+        for (String[] line : trainingSet) {
+            Issue issue = new Issue(Integer.valueOf(line[0].replace("\"","")), line[3].trim(), line[4].trim(), line[1].trim(),
+                    line[2].trim());
             Document doc = new Document();
             Long time = issue.getTimeSpent();
             doc.add(new StringField("id", String.valueOf(issue.getId()), Field.Store.YES));
-            doc.add(new TextField("title", Predictor.escapeSpecialCharacters(issue.getTitle()), Field.Store.YES));
-            doc.add(new TextField("description", Predictor.escapeSpecialCharacters(issue.getDescription()),
+            doc.add(new TextField("title", issue.getTitle(), Field.Store.YES));
+            doc.add(new TextField("description", issue.getDescription(),
                     Field.Store.YES));
             doc.add(new StoredField("ttf", time));
             try {
@@ -146,16 +159,16 @@ public class Evaluator {
         System.out.println("Populated training set");
     }
 
-    public static void predictTTFIssues(Properties properties, Directory dir, StandardAnalyzer analyzer, Instances testSet , Integer fold) {
+    public static void predictTTFIssues(Properties properties, Directory dir, StandardAnalyzer analyzer,
+            List<String[]> testSet, Integer fold) {
         List<List<HashMap<String, String>>> result = new ArrayList<>();
         String issueUrl = properties.getProperty("url.issue");
         List<Integer> issuesID = new ArrayList<>();
-        for(int i = 0; i<testSet.numInstances(); i++) { //Getting the list of IDs to predict
-            Instance line = testSet.get(i);
-            Integer id = (int)line.value(testSet.attribute("ID"));
+        for (String[] line : testSet) { // Getting the list of IDs to predict
+            Integer id = Integer.valueOf(line[0].replace("\"",""));
             issuesID.add(id);
         }
-        //Getting issue to predict's data
+        // Getting issue to predict's data
         for (Integer id : issuesID) {
             String link = issueUrl + id.toString();
             org.jsoup.nodes.Document doc = WebScraper.tryConnection(link);
@@ -163,30 +176,30 @@ public class Evaluator {
             result.add(predictTimeToFix(issue, dir, analyzer, properties));
         }
         // PRINTING RESULTS + WRITING RESULTS IN FILE
+        /*
+         * For readability, in the actual predictor we would print all the necesary data
+         * to comprehend the prediction. In this case, since we are only using the file
+         * as a way to store the results, we will only add the necessary data into it.
+         */
         Integer k = Integer.valueOf(properties.getProperty("issues.neighbor"));
-        String resultPath = properties.getProperty("result.predictions.file.evaluator").replace(".csv", fold.toString()+".csv");
+        String resultPath = properties.getProperty("result.predictions.file.evaluator").replace(".csv",
+                fold.toString() + ".csv");
         StringBuilder csvContent = new StringBuilder();
         for (int i = 0; i < issuesID.size(); i++) { // For each issue to predict
-            String title = String.format("Showing the %d closests neighbors for issue %s", k, issuesID.get(i));
-            csvContent.append(title+"\n");
             Float predictedTime = 0.0f;
-            Float realTTF = 0.0f;
+            Float realTTF = Float.valueOf(result.get(i).get(0).get("realTTF"));
             for (HashMap<String, String> s : result.get(i)) { // For each neighbor
-                String score = "Issue ID: " + s.get("id") + " Score: " + s.get("score") +
-                        " Time to fix: " + s.get("ttf") + " hours";
                 predictedTime += Float.valueOf(s.get("ttf"));
-                realTTF = Float.valueOf(s.get("realTTF"));
-                csvContent.append(score+"\n");//Adding each neighbor score to file
             }
-            predictedTime = predictedTime / k; // hours
-            String prediction = "The predicted time to fix for issue " + issuesID.get(i) + " is: " + predictedTime + " hours. ("
-            + predictedTime/24 + " days)";
-            csvContent.append(prediction+"\n");
-            Float timediff= predictedTime - realTTF; // We dont use absolute cause we want to know if we are over or underestimating
-            csvContent.append("Real TTF: "+ realTTF.toString() + " hours ( " + realTTF/24 + " days)\n");
-            csvContent.append("\u2206TTF (Time difference): "+ timediff.toString() + " hours ( " + timediff/24 + " days)\n");
-            csvContent.append("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-            //Writing the prediction in the file
+            predictedTime = predictedTime / k; // Predicted hours (average of the k closest neighbors)
+            Float timediff = predictedTime - realTTF; // We use absolute value since both underestimation and
+                                                      // overestimation are undersirable
+            String prediction = String
+                    .format("Prediction for issue %s: [Actual time= %.2f ; Predicted time= %.2f ; \u2206TTF= %.2f]",
+                            issuesID.get(i), realTTF, predictedTime, timediff)
+                    .replace(",", ".");
+            csvContent.append(prediction + "\n");
+            // Writing the prediction in the file
             try {
                 FileUtils.writeStringToFile(new File(resultPath), csvContent.toString(), StandardCharsets.UTF_8);
             } catch (IOException e) {
@@ -206,11 +219,12 @@ public class Evaluator {
             searcher.setSimilarity(new ClassicSimilarity());
             String[] fields;
             String[] queries;
-            // Since Descriptions can be an empty field, we need to check if is empty to not add it to the query
-            if(issue.getDescription().isEmpty()){
+            // Since Descriptions can be an empty field, we need to check if is empty to not
+            // add it to the query
+            if (issue.getDescription().isEmpty()) {
                 fields = new String[] { "title" };
                 queries = new String[] { Predictor.escapeSpecialCharacters(issue.getTitle().trim()) };
-            }else{
+            } else {
                 fields = new String[] { "title", "description" };
                 queries = new String[] { Predictor.escapeSpecialCharacters(issue.getTitle().trim()),
                     Predictor.escapeSpecialCharacters(issue.getDescription().trim()) };
@@ -233,7 +247,8 @@ public class Evaluator {
                 }
                 reader.close();
             } catch (ParseException e) {
-                System.out.println("Error parsing the query: " + issue.getId() + " Description:" + issue.getDescription());
+                System.out.println(
+                        "Error parsing the query: " + issue.getId() + " Description:" + issue.getDescription());
                 e.printStackTrace();
             }
 
@@ -243,37 +258,43 @@ public class Evaluator {
 
         return results;
     }
-    
-    private static String getCleanFilePath(Properties properties){ // Formats the file to prevent " , ' and , taken as separators or special characters. 
-        String issueFile = properties.getProperty("filteredissue.path");
-        String outputFile = properties.getProperty("filteredissue.path").replace(".csv", "_cleaned.csv");//Auxiliar file without first line
-            try (BufferedReader br = new BufferedReader(new FileReader(issueFile));
-                    BufferedWriter bw = new BufferedWriter(new FileWriter(outputFile))) {
-                String line;
-                while ((line = br.readLine()) != null) {
-                    List<String> lineSplit = Arrays.asList(line.split("\",\"")); // Splitting the line by ","
-                    if(lineSplit.get(4).length() >20000) {
-                        continue;} //If the description is too long, we skip this issue. 
-                    // THIS SHOULD NOT BE DONE HERE, JUST FOR TESTING PURPOSES. SHOULD BE DONE BEFORE SPLITTING IN FOLDS
-                    if(lineSplit.get(4).length()== 0) {
-                        lineSplit.set(4 , " ");
-                    }
-                    lineSplit.set(3, lineSplit.get(3).replace(",", "\\,").replace("'","\\'")); // In the string, we replace every , with \, and every ' with \'
-                    lineSplit.set(4, lineSplit.get(4).replace(",", "\\,").replace("'","\\'"));
-                    for( int i = 0; i<lineSplit.size();i++) {
-                        lineSplit.set(i, lineSplit.get(i).replace("\"", "\\\"")); // On every field we replace every " with \"
-                        lineSplit.set(i, lineSplit.get(i).replace("\n", ""));
-                    }
-                    lineSplit.set(0, lineSplit.get(0).replace("\\\"", ""));
-                    lineSplit.set(4, "\""+lineSplit.get(4).substring(0, lineSplit.get(4).length()-2)+"\"");
-                    lineSplit.set(3, "\""+lineSplit.get(3)+"\""); 
-                    String newLine = String.join(",",lineSplit).trim();
-                    bw.write(newLine);
-                    bw.newLine();
+
+
+    /**
+     * Get list of issues from csv file indicated as "filteredissue.path".
+     *
+     * @param filePath the path to the CSV file
+     * @return a list of string arrays representing the issues from the CSV file
+     */
+    public static List<String[]> loadDataFromCSV(String filePath) {
+        List<String[]> data = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            br.readLine(); // Skip header
+            while ((line = br.readLine()) != null) {
+                String[] lineSplit = line.split("\",\""); // Splitting the line by ","
+
+                // If the description is too long, we skip this issue.
+                if (lineSplit[4].length() > 20000) {
+                    continue;
                 }
-            }catch (IOException e) { // Files are not generated correctly / read correctly
-                e.printStackTrace();
+
+                //We clean unnecessary characters created on split
+                lineSplit[0] = lineSplit[0].replace("\"", "");
+                lineSplit[4] = lineSplit[4].substring(0, lineSplit[4].length() - 1);
+                
+                //If the title or description are empty, we skip this issue since we cannot have a empty query.
+                if(lineSplit[3].equals("")|| lineSplit[4].equals("")) continue;
+                //And we escape special characters
+                for (String attribute : lineSplit) {
+                    attribute = Predictor.escapeSpecialCharacters(attribute);
+                }
+                data.add(lineSplit);
             }
-        return outputFile;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return data;
     }
+
 }
