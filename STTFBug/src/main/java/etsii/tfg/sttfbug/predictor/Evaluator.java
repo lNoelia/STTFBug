@@ -1,8 +1,10 @@
 package etsii.tfg.sttfbug.predictor;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
@@ -44,34 +46,92 @@ import etsii.tfg.sttfbug.issues.WebScraper;
 public class Evaluator {
 
     public static void evaluatePredictor(Properties properties) {
-        String issueFile = properties.getProperty("filteredissue.path");
+        // First we create the file where we will store the results for every fold.
+        String resultPath = properties.getProperty("result.predictions.file").replace(".csv",
+                "_evaluation_results.csv");
+        List<List<String>> rows = new ArrayList<>();
+        List<String> headers = Arrays.asList("Mean absolute error", "Number of predictions within the range",
+        "Percentage of predictions within the range");
+        rows.add(headers); 
         // Load the data from the CSV file
+        String issueFile = properties.getProperty("filteredissue.path");
         List<String[]> data = loadDataFromCSV(issueFile);
 
-        int numFolds = 3; // Number of folds TO DO NOT STATIC
-        List<List<String[]>> folds = splitDataIntoFolds(data, numFolds);
+        Integer[] numFolds = Arrays.stream(properties.getProperty("folds").split(","))
+                .map(Integer::parseInt)
+                .toArray(Integer[]::new);
+        for(Integer folds : numFolds) {
+            System.out.println("NUMBER OF FOLDS: "  + folds.toString());
+            // EVALUATION OF EACH FOLD
+            // Variables to store the evaluation metrics
+            Float totaldiff = 0.0f;
+            Float inRange = 0.0f;
+            Float nLines = 0.0f;
 
-        // EVALUATION OF EACH FOLD
-        for (int fold = 0; fold < numFolds; fold++) {
-            List<String[]> trainingSet = combineFolds(folds, fold);
-            List<String[]> testSet = folds.get(fold);
+            List<List<String[]>> foldsList = splitDataIntoFolds(data, folds);
+            StringBuilder csvContent = new StringBuilder();
+            String auxEvalPath = properties.getProperty("result.predictions.file").replace(".csv", "_eval.csv");
 
-            System.out.println("Number of instances for the training set: " + trainingSet.size());
-            System.out.println("Number of instances for the testing set: " + testSet.size());
+            for (int fold = 0; fold < folds; fold++) {
+                List<String[]> trainingSet = combineFolds(foldsList, fold);
+                List<String[]> testSet = foldsList.get(fold);
 
-            populateTrainingSet(properties, trainingSet, testSet, fold);
+                System.out.println("Number of issues for the training set: " + trainingSet.size());
+                System.out.println("Number of issues for the testing set: " + testSet.size());
 
-            // CALCULATE EVALUATION METRICS FOR EACH FOLD
-            // Use
-            // Aquí deberíamos eliminar los archivos de _EVALX.csv ya que no son utiles y
-            // ocupan espacio, sólo queremos
-            // obtener los resultados, calcular las métricas y guardarlas en un archivo.
+                populateTrainingSet(properties, trainingSet, testSet, fold, csvContent);
+                // Writing the prediction in the file
+                try {
+                    FileUtils.writeStringToFile(new File(auxEvalPath), csvContent.toString(), StandardCharsets.UTF_8);
+                    System.out.println("Content written in file sucessfully");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                // READING THE FILE AND GETTING THE METRICS FOR THE EVALUATION
+
+                try (BufferedReader br = new BufferedReader(new FileReader(auxEvalPath))) {
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        nLines++;
+                        String lineSplit = line.split("\\[")[1].replace("]", "");
+                        Float actualTime = Float.valueOf(lineSplit.split("Actual time=")[1].split(";")[0].trim());
+                        Float diffValue = Float.valueOf(lineSplit.split("TTF=")[1].trim());
+                        totaldiff += diffValue;
+                        if (isBetweenPercentage(actualTime, diffValue, properties)) {
+                            inRange++;
+                        }
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            // Calculating the metrics and adding them to the list of rows
+            totaldiff = totaldiff / nLines;
+            Float percentInRange = (inRange / nLines) * 100;
+            List<String> row = Arrays.asList("Number of folds = " + folds.toString(), totaldiff.toString(), inRange.toString(),
+                    String.valueOf(percentInRange));
+            rows.add(row);
         }
-        // Return the evaluation metrics for all the number of folds (numFolds)
-        // TO DO - FORMATO DE SALIDA DE LOS RESULTADOS
-    }
+        
+        // CREATION OF THE RESULT FILE:
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(resultPath))) {
+            for (List<String> row : rows) {
+                writer.write(String.join(",", row));
+                writer.newLine();
+            }
+            System.out.println("Evaluation results file has been created successfully!");
+        } catch (IOException e) {
+            System.out.println("Error writing evaluation results file: " + e.getMessage());
+        }
 
-    
+        // Deleting the auxiliar file
+        File auxFile = new File(properties.getProperty("result.predictions.file").replace(".csv", "_eval.csv"));
+        if (auxFile.exists()) {
+            FileUtils.deleteQuietly(auxFile);
+        }
+    }
 
     public static List<List<String[]>> splitDataIntoFolds(List<String[]> data, int numFolds) {
         Collections.shuffle(data); // Shuffle the issues
@@ -103,7 +163,7 @@ public class Evaluator {
     }
 
     private static void populateTrainingSet(Properties properties, List<String[]> trainingSet, List<String[]> testSet,
-            Integer fold) {
+            Integer fold, StringBuilder csvContent) {
         // Preparing the Lucene directory
         String luceneDirPath = properties.getProperty("lucene.directorypath");// LUCENE DIRECTORY PATH
         File luceneDir = new File(luceneDirPath);
@@ -117,6 +177,7 @@ public class Evaluator {
                 e.printStackTrace();
             }
         }
+
         // Preparing for lucene indexing
         String[] stopWords = properties.getProperty("analyzer.stopwords").split(",");
         CharArraySet sWSet = new CharArraySet(Arrays.asList(stopWords), true);
@@ -128,7 +189,7 @@ public class Evaluator {
                     IndexWriter writer = new IndexWriter(dir, config);
                     writeIssues(writer, trainingSet);
                     writer.close();
-                    predictTTFIssues(properties, dir, analyzer, testSet, fold);
+                    predictTTFIssues(properties, dir, analyzer, testSet, fold, csvContent);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -136,12 +197,12 @@ public class Evaluator {
                 System.err.println("Error opening Lucene directory: " + e.getMessage());
             }
         }
-
     }
 
     private static void writeIssues(IndexWriter writer, List<String[]> trainingSet) {
         for (String[] line : trainingSet) {
-            Issue issue = new Issue(Integer.valueOf(line[0].replace("\"","")), line[3].trim(), line[4].trim(), line[1].trim(),
+            Issue issue = new Issue(Integer.valueOf(line[0].replace("\"", "")), line[3].trim(), line[4].trim(),
+                    line[1].trim(),
                     line[2].trim());
             Document doc = new Document();
             Long time = issue.getTimeSpent();
@@ -160,12 +221,12 @@ public class Evaluator {
     }
 
     public static void predictTTFIssues(Properties properties, Directory dir, StandardAnalyzer analyzer,
-            List<String[]> testSet, Integer fold) {
+            List<String[]> testSet, Integer fold, StringBuilder csvContent) {
         List<List<HashMap<String, String>>> result = new ArrayList<>();
         String issueUrl = properties.getProperty("url.issue");
         List<Integer> issuesID = new ArrayList<>();
         for (String[] line : testSet) { // Getting the list of IDs to predict
-            Integer id = Integer.valueOf(line[0].replace("\"",""));
+            Integer id = Integer.valueOf(line[0].replace("\"", ""));
             issuesID.add(id);
         }
         // Getting issue to predict's data
@@ -182,9 +243,6 @@ public class Evaluator {
          * as a way to store the results, we will only add the necessary data into it.
          */
         Integer k = Integer.valueOf(properties.getProperty("issues.neighbor"));
-        String resultPath = properties.getProperty("result.predictions.file.evaluator").replace(".csv",
-                fold.toString() + ".csv");
-        StringBuilder csvContent = new StringBuilder();
         for (int i = 0; i < issuesID.size(); i++) { // For each issue to predict
             Float predictedTime = 0.0f;
             Float realTTF = Float.valueOf(result.get(i).get(0).get("realTTF"));
@@ -192,21 +250,15 @@ public class Evaluator {
                 predictedTime += Float.valueOf(s.get("ttf"));
             }
             predictedTime = predictedTime / k; // Predicted hours (average of the k closest neighbors)
-            Float timediff = predictedTime - realTTF; // We use absolute value since both underestimation and
-                                                      // overestimation are undersirable
+            Float timediff = Math.abs(predictedTime - realTTF); // We use absolute value since both underestimation and
+            // overestimation are undersirable
             String prediction = String
                     .format("Prediction for issue %s: [Actual time= %.2f ; Predicted time= %.2f ; \u2206TTF= %.2f]",
                             issuesID.get(i), realTTF, predictedTime, timediff)
                     .replace(",", ".");
             csvContent.append(prediction + "\n");
-            // Writing the prediction in the file
-            try {
-                FileUtils.writeStringToFile(new File(resultPath), csvContent.toString(), StandardCharsets.UTF_8);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+
         }
-        System.out.println("Result CSV file created successfully!");
     }
 
     private static List<HashMap<String, String>> predictTimeToFix(Issue issue, Directory dir, StandardAnalyzer analyzer,
@@ -227,7 +279,7 @@ public class Evaluator {
             } else {
                 fields = new String[] { "title", "description" };
                 queries = new String[] { Predictor.escapeSpecialCharacters(issue.getTitle().trim()),
-                    Predictor.escapeSpecialCharacters(issue.getDescription().trim()) };
+                        Predictor.escapeSpecialCharacters(issue.getDescription().trim()) };
             }
             Map<String, Float> boosts = Map.of("title", 1.0f, "description", 1.0f);
             MultiFieldQueryParser parser = new MultiFieldQueryParser(fields, analyzer, boosts);
@@ -259,7 +311,6 @@ public class Evaluator {
         return results;
     }
 
-
     /**
      * Get list of issues from csv file indicated as "filteredissue.path".
      *
@@ -279,13 +330,15 @@ public class Evaluator {
                     continue;
                 }
 
-                //We clean unnecessary characters created on split
+                // We clean unnecessary characters created on split
                 lineSplit[0] = lineSplit[0].replace("\"", "");
                 lineSplit[4] = lineSplit[4].substring(0, lineSplit[4].length() - 1);
-                
-                //If the title or description are empty, we skip this issue since we cannot have a empty query.
-                if(lineSplit[3].equals("")|| lineSplit[4].equals("")) continue;
-                //And we escape special characters
+
+                // If the title or description are empty, we skip this issue since we cannot
+                // have a empty query.
+                if (lineSplit[3].equals("") || lineSplit[4].equals(""))
+                    continue;
+                // And we escape special characters
                 for (String attribute : lineSplit) {
                     attribute = Predictor.escapeSpecialCharacters(attribute);
                 }
@@ -295,6 +348,13 @@ public class Evaluator {
             e.printStackTrace();
         }
         return data;
+    }
+
+    public static boolean isBetweenPercentage(Float actualTime, Float diffValue, Properties properties) {
+        Float percentage = Float.valueOf(properties.getProperty("percentage.within"));
+        Float lowerBound = actualTime - (actualTime * percentage);
+        Float upperBound = actualTime + (actualTime * percentage);
+        return diffValue >= lowerBound && diffValue <= upperBound;
     }
 
 }
