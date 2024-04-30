@@ -208,6 +208,7 @@ public class Predictor {
 
     public static String escapeSpecialCharacters(String query) {
         query = query.replaceAll("([\\[\\](){}+\"\\-'/!~&^<>:;?*])", "\\\\$1"); // escape special characters
+        query = query.replace("OR", "\\\\OR").replace("AND", "\\\\AND").replace("NOT", "\\\\NOT");
         query = query.replace("\\n", " ").replace("\\u", "\\\\u"); // We also need to escape unicode indicator
         // This characters are not allowed in the query, so we have to escape them
         query = QueryParser.escape(query);
