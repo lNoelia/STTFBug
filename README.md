@@ -1,10 +1,18 @@
 # Simple Time To Fix Bug (STTFBug)
+
 ## Overview 
   ToDo
+
 ## Features 
   ToDo
+
 ## Usage 
   ToDo
+
+## Tests
+The test cases are run with: mvn test in the STTFBUG folder.
+When running the test with said command, it will run the test of each module and give you the results of the tests.
+
 ## Properties configuration
 The config.properties file is used to config the various parameters given to the methods already described.
 - analyzer.stopwords: words and symbols separated by commas that will not be taken into account when calculating similarity
@@ -23,13 +31,13 @@ The config.properties file is used to config the various parameters given to the
 - notnull.EndDate: true or false. If this value is true, it means that the ID of the issue can NOT be null. 
 - time.isvalid: true or false. If the value is true, it will check that the EndDate is before the StartDate and that the time between them is at least 5 minutes.
 - max.clause.count: This value is the maximum number of clauses that lucene can handle. If the query is a longer text, you might need to increase this value
+
 #### Values of resolution and status
 - Resolution values: -(Resolution not set) , F(Fixed), I(Invalid), W(Wontfix), D(Duplicated), 4(worksforme), M(Moved), N(Not_eclipse), T(Total)
 - Status values: U(Unconfirmed), N(New), A(Assigned), O(reOpen), R(Resolved), V(Verified), C(Closed), T(Total)
+
 #### Non editable properties
 - url.main: URL with table of issues by Resolution and status values.
 - url.issue: URL to issue details
 - url.issue.history: URL to the history of an issue
 - issue.fields: fields of the class Issue.
-#### Sample config.properties file: 
-ToDo
