@@ -45,18 +45,19 @@ import etsii.tfg.sttfbug.issues.WebScraper;
 
 public class Evaluator {
 
+    private static Integer longDescriptionIssues = 0;
     public static void evaluatePredictor(Properties properties) {
         // First we create the file where we will store the results for every fold.
         String resultPath = properties.getProperty("result.predictions.file").replace(".csv",
                 "_evaluation_results.csv");
         List<List<String>> rows = new ArrayList<>();
-        List<String> headers = Arrays.asList("Mean absolute error", "Number of predictions within the range",
+        List<String> headers = Arrays.asList("Number of folds","Mean absolute error", "Number of predictions within the range",
         "Percentage of predictions within the range");
         rows.add(headers); 
         // Load the data from the CSV file
         String issueFile = properties.getProperty("filteredissue.path");
         List<String[]> data = loadDataFromCSV(issueFile);
-
+        System.out.println("Number of issues with long descriptions(descarted issues): " + longDescriptionIssues);
         Integer[] numFolds = Arrays.stream(properties.getProperty("folds").split(","))
                 .map(Integer::parseInt)
                 .toArray(Integer[]::new);
@@ -123,7 +124,7 @@ public class Evaluator {
             }
             System.out.println("Evaluation results file has been created successfully!");
         } catch (IOException e) {
-            System.out.println("Error writing evaluation results file: " + e.getMessage());
+            System.err.println("Error writing evaluation results file: " + e.getMessage());
         }
 
         // Deleting the auxiliar file
@@ -299,7 +300,7 @@ public class Evaluator {
                 }
                 reader.close();
             } catch (ParseException e) {
-                System.out.println(
+                System.err.println(
                         "Error parsing the query: " + issue.getId() + " Description:" + issue.getDescription());
                 e.printStackTrace();
             }
@@ -327,6 +328,7 @@ public class Evaluator {
 
                 // If the description is too long, we skip this issue.
                 if (lineSplit[4].length() > 20000) {
+                    longDescriptionIssues++;
                     continue;
                 }
 

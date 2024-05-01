@@ -14,13 +14,14 @@ public class WebScraper{
 
     /**
      * @return Creates .csv files with the list of issues that you have selected on the configuration file.
+     * @throws InvalidNameException 
      */
-    public static void searchDocs(Properties properties) throws IOException{
+    public static void searchDocs(Properties properties) throws IOException, InvalidNameException{
         String urlMain= properties.getProperty("url.main");
         List<String> listDocuments= List.of(properties.getProperty("issues.list.documents").split(","));
         for(String f:listDocuments){
             if(f.length()!=2){
-                System.out.println("Invalid name length in document " + f);
+                throw new InvalidNameException("Invalid name length in document " + f);
             }else{
                 Integer column = getColumn(f.charAt(0));
                 Integer row = getRow(f.charAt(1));
@@ -32,7 +33,7 @@ public class WebScraper{
                 if(row != -1 && column != -1){
                     getIssuesDocument(doc, filePath, row, column);
                 }else{
-                    System.out.println("Invalid type of document: " + f);
+                    throw new InvalidNameException("Invalid letter combination in the name of the document " + f);
                 }
             }
         }
@@ -101,7 +102,8 @@ public class WebScraper{
 
     public static Document tryConnection(String link){
         try{
-            Document doc = Jsoup.connect(link).timeout(60*1000).get();
+            // 10 minutes to throw a timeout exception because of the high number of issues can provoke a long response time
+            Document doc = Jsoup.connect(link).timeout(60*10000).get();
             Thread.sleep(0);
             return doc;
         } catch (InterruptedException e) {

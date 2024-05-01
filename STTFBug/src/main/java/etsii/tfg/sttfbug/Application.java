@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Scanner;
 
+import etsii.tfg.sttfbug.issues.InvalidNameException;
 import etsii.tfg.sttfbug.issues.IssueFilter;
 import etsii.tfg.sttfbug.issues.WebScraper;
 import etsii.tfg.sttfbug.predictor.Evaluator;
@@ -32,9 +33,9 @@ public class Application {
                     case 1:
                         try {
                             WebScraper.searchDocs(properties);
-                        } catch (IOException e) {
+                        } catch (IOException | InvalidNameException e) {
                             e.printStackTrace();
-                        }
+                        } 
                         break;
                     case 2:
                         IssueFilter.getListAllIssues(properties);
