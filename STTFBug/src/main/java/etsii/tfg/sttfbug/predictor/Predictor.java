@@ -127,7 +127,7 @@ public class Predictor {
             for (String id : issuesID) {
                 String link = issueUrl + id;
                 org.jsoup.nodes.Document doc = WebScraper.tryConnection(link);
-                Issue issue = IssueFilter.getIssue(doc, id, IssueType.PREDICT);
+                Issue issue = IssueFilter.getIssue(properties,doc, id, IssueType.PREDICT);
                 result.add(predictTimeToFix(issue, dir, analyzer, properties));
             }
             // PRINTING RESULTS + WRITING RESULTS IN FILE

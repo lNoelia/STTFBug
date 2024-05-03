@@ -1,4 +1,5 @@
 package etsii.tfg.sttfbug.issues;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -10,100 +11,142 @@ import org.apache.commons.io.FileUtils;
 import org.jsoup.*;
 import org.jsoup.nodes.*;
 
-public class WebScraper{
+public class WebScraper {
 
     /**
-     * @return Creates .csv files with the list of issues that you have selected on the configuration file.
-     * @throws InvalidNameException 
+     * @return Creates .csv files with the list of issues that you have selected on
+     *         the configuration file.
+     * @throws InvalidNameException
      */
-    public static void searchDocs(Properties properties) throws IOException, InvalidNameException{
-        String urlMain= properties.getProperty("url.main");
-        List<String> listDocuments= List.of(properties.getProperty("issues.list.documents").split(","));
-        for(String f:listDocuments){
-            if(f.length()!=2){
+    public static void searchDocs(Properties properties) throws IOException, InvalidNameException {
+        String urlMain = properties.getProperty("url.main");
+        List<String> listDocuments = List.of(properties.getProperty("issues.list.documents").split(","));
+        for (String f : listDocuments) {
+            if (f.length() != 2) {
                 throw new InvalidNameException("Invalid name length in document " + f);
-            }else{
+            } else {
                 Integer column = getColumn(f.charAt(0));
                 Integer row = getRow(f.charAt(1));
                 String resources = properties.getProperty("eclipseissues.directorypath");
                 String filePath = resources + File.separator + f + ".csv";
                 File file = new File(filePath);
-                Files.deleteIfExists(file.toPath());// To avoid unique name conflicts, we delete the .csv if it already exists 
+                Files.deleteIfExists(file.toPath());// To avoid unique name conflicts, we delete the .csv if it already
+                                                    // exists
                 Document doc = tryConnection(urlMain);
-                if(row != -1 && column != -1){
+                if (row != -1 && column != -1) {
                     getIssuesDocument(doc, filePath, row, column);
-                }else{
+                } else {
                     throw new InvalidNameException("Invalid letter combination in the name of the document " + f);
                 }
             }
         }
     }
-    
-    private static Integer getRow(char f) {
+
+    public static Integer getRow(char f) {
         Integer res = -1;
-        switch(f){
-            case 'U': res = 0; break;
-            case 'N': res = 1; break;
-            case 'A': res = 2; break;
-            case 'O': res = 3; break;
-            case 'R': res = 4; break;
-            case 'V': res = 5; break;
-            case 'C': res = 6; break;
-            case 'T': res = 7; break;
-            default: return -1;
+        switch (f) {
+            case 'U':
+                res = 0;
+                break;
+            case 'N':
+                res = 1;
+                break;
+            case 'A':
+                res = 2;
+                break;
+            case 'O':
+                res = 3;
+                break;
+            case 'R':
+                res = 4;
+                break;
+            case 'V':
+                res = 5;
+                break;
+            case 'C':
+                res = 6;
+                break;
+            case 'T':
+                res = 7;
+                break;
+            default:
+                return -1;
         }
         return res;
     }
-    private static Integer getColumn(char f) {
+
+    public static Integer getColumn(char f) {
         Integer res = -1;
-        switch(f){
-            case '-': res = 1; break;
-            case 'F': res = 2; break;
-            case 'I': res = 3; break;
-            case 'W': res = 4; break;
-            case 'D': res = 5; break;
-            case '4': res = 6; break;
-            case 'M': res = 7; break;
-            case 'N': res = 8; break;
-            case 'T': res = 9; break;
-            default: return -1;
+        switch (f) {
+            case '-':
+                res = 1;
+                break;
+            case 'F':
+                res = 2;
+                break;
+            case 'I':
+                res = 3;
+                break;
+            case 'W':
+                res = 4;
+                break;
+            case 'D':
+                res = 5;
+                break;
+            case '4':
+                res = 6;
+                break;
+            case 'M':
+                res = 7;
+                break;
+            case 'N':
+                res = 8;
+                break;
+            case 'T':
+                res = 9;
+                break;
+            default:
+                return -1;
         }
         return res;
     }
 
     /**
-     * @param doc Document of the Report: Status/Solution page 
-     * @param path Path where the .csv file will be saved
-     * @param row Row of the table where the url to the list of issues is located
-     * @param column Column of the table where the url to the list of issues is located
+     * @param doc    Document of the Report: Status/Solution page
+     * @param path   Path where the .csv file will be saved
+     * @param row    Row of the table where the url to the list of issues is located
+     * @param column Column of the table where the url to the list of issues is
+     *               located
      */
-    private static void getIssuesDocument(Document doc, String path, Integer row , Integer column){
+    private static void getIssuesDocument(Document doc, String path, Integer row, Integer column) {
         Element table = doc.selectFirst("div div table table tbody");
         Element cell = table.select("tr").get(row).select("td").get(column);
         Element cellLink = cell.selectFirst("a");
-        if(cellLink!=null){
+        if (cellLink != null) {
             String url = cellLink.attr("abs:href");
             Document auxDoc = tryConnection(url);
-            String downloadLink = auxDoc.getElementsByClass("buglist_menu").first().getElementsByClass("bz_query_links").first().selectFirst("a").attr("abs:href");
+            String downloadLink = auxDoc.getElementsByClass("buglist_menu").first().getElementsByClass("bz_query_links")
+                    .first().selectFirst("a").attr("abs:href");
             downloadCSV(downloadLink, path);
-        }else{
-            System.out.println("No link found for the document "+ path.split("/")[1]);
+        } else {
+            System.out.println("No link found for the document " + path.split("/")[1]);
         }
     }
-    
-    private static void downloadCSV(String url, String path){
+
+    private static void downloadCSV(String url, String path) {
         try {
-            FileUtils.copyURLToFile(new URL(url), new File(path), 90*1000, 90*1000);
+            FileUtils.copyURLToFile(new URL(url), new File(path), 90 * 1000, 90 * 1000);
         } catch (Exception e) {
             System.err.println("An error has occured while downloading the file: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    public static Document tryConnection(String link){
-        try{
-            // 10 minutes to throw a timeout exception because of the high number of issues can provoke a long response time
-            Document doc = Jsoup.connect(link).timeout(60*10000).get();
+    public static Document tryConnection(String link) {
+        try {
+            // 10 minutes to throw a timeout exception because of the high number of issues
+            // can provoke a long response time
+            Document doc = Jsoup.connect(link).timeout(60 * 10000).get();
             Thread.sleep(0);
             return doc;
         } catch (InterruptedException e) {
@@ -111,11 +154,10 @@ public class WebScraper{
             e.printStackTrace();
             Thread.currentThread().interrupt();
             return new Document("");
-        }catch (IOException e) {
+        } catch (IOException e) {
             System.err.println("Can't conect to  " + link + ": " + e.getMessage());
             return new Document("");
         }
     }
-    
-    
+
 }

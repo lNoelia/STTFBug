@@ -234,7 +234,7 @@ public class Evaluator {
         for (Integer id : issuesID) {
             String link = issueUrl + id.toString();
             org.jsoup.nodes.Document doc = WebScraper.tryConnection(link);
-            Issue issue = IssueFilter.getIssue(doc, id.toString(), IssueType.TRAINING);
+            Issue issue = IssueFilter.getIssue(properties,doc, id.toString(), IssueType.TRAINING);
             result.add(predictTimeToFix(issue, dir, analyzer, properties));
         }
         // PRINTING RESULTS + WRITING RESULTS IN FILE

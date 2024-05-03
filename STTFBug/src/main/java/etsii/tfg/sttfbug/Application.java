@@ -38,7 +38,11 @@ public class Application {
                         } 
                         break;
                     case 2:
-                        IssueFilter.getListAllIssues(properties);
+                        try {
+                            IssueFilter.getListAllIssues(properties);
+                        } catch (InvalidNameException e) {
+                            e.printStackTrace();
+                        }
                         break;
                     case 3:
                         Predictor.populateTrainingSet(properties);
