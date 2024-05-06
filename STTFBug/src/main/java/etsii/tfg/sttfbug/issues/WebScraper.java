@@ -28,7 +28,7 @@ public class WebScraper {
                 Integer column = getColumn(f.charAt(0));
                 Integer row = getRow(f.charAt(1));
                 String resources = properties.getProperty("eclipseissues.directorypath");
-                String filePath = resources + File.separator + f + ".csv";
+                String filePath = resources + File.separator + f.toUpperCase() + ".csv";
                 File file = new File(filePath);
                 Files.deleteIfExists(file.toPath());// To avoid unique name conflicts, we delete the .csv if it already
                                                     // exists
@@ -43,6 +43,7 @@ public class WebScraper {
     }
 
     public static Integer getRow(char f) {
+        f = Character.toUpperCase(f);
         Integer res = -1;
         switch (f) {
             case 'U':
@@ -76,6 +77,7 @@ public class WebScraper {
     }
 
     public static Integer getColumn(char f) {
+        f = Character.toUpperCase(f);
         Integer res = -1;
         switch (f) {
             case '-':
