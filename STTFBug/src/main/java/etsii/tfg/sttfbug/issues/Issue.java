@@ -149,7 +149,11 @@ public class Issue {
     }
 
     private static String cleanText(String text) {
-        return text.replaceAll("\\r?\\n", " ");
+        if(text != null){
+            return text.replaceAll("\\r?\\n", " ");
+        } else {
+            return null;
+        }
     }
 
     /*
