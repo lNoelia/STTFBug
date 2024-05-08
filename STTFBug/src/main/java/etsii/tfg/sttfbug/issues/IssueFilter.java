@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.stream.Stream;
 
+import org.apache.commons.io.FileUtils;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -67,6 +68,13 @@ public class IssueFilter {
         List<Issue> filteredIssues = filterIssues(issuesList, properties);
         System.out.println("Filtered issues list size: " + filteredIssues.size());
         System.out.println("Number of issues reopened:" + numberReopenedIssues);
+        StringBuilder csvContent = new StringBuilder();
+        csvContent.append("Reopened issues: "+numberReopenedIssues);
+        try {
+            FileUtils.writeStringToFile(new File(properties.getProperty("filteredissue.path").replace(".csv", "REOPENED.csv")), csvContent.toString(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         writeCSV(filteredIssues, filteredIssueFile);
     }
 
