@@ -122,12 +122,12 @@ class IssueFilterTest {
             try (BufferedReader reader = new BufferedReader(
                     new FileReader(propertiesTest.getProperty("filteredissue.path")))) {
                 assertEquals(expectedNumber, reader.lines().count());
-                File file = new File(propertiesTest.getProperty("filteredissue.path"));
-                file.delete();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+        File file = new File(propertiesTest.getProperty("filteredissue.path"));
+        file.delete();
     }
 
     @Test
@@ -138,7 +138,7 @@ class IssueFilterTest {
         propertiesTest.setProperty("filteredissue.path", propertiesTest.getProperty("filteredissue.path").replace(".csv", "-UInvalidMaxtest.csv"));
         propertiesTest.setProperty("notnull.EndDate", "false");
         propertiesTest.setProperty("time.isvalid", "false");
-        propertiesTest.setProperty("max.issues", "-10");
+        propertiesTest.setProperty("issues.max", "-10");
         try {
             WebScraper.searchDocs(propertiesTest);
         } catch (IOException | InvalidNameException e) {
@@ -160,12 +160,12 @@ class IssueFilterTest {
             try (BufferedReader reader = new BufferedReader(
                     new FileReader(propertiesTest.getProperty("filteredissue.path")))) {
                 assertEquals(expectedNumber, reader.lines().count());
-                File file = new File(propertiesTest.getProperty("filteredissue.path"));
-                file.delete();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+        File file = new File(propertiesTest.getProperty("filteredissue.path"));
+        file.delete();
     }
 
     @Test
@@ -177,7 +177,7 @@ class IssueFilterTest {
         propertiesTest.setProperty("notnull.EndDate", "false");
         propertiesTest.setProperty("notnull.Description", "false");
         propertiesTest.setProperty("time.isvalid", "false");
-        propertiesTest.setProperty("max.issues", "-1");
+        propertiesTest.setProperty("issues.max", "-1");
         try {
             WebScraper.searchDocs(propertiesTest);
         } catch (IOException | InvalidNameException e) {
@@ -199,19 +199,19 @@ class IssueFilterTest {
             try (BufferedReader reader = new BufferedReader(
                     new FileReader(propertiesTest.getProperty("filteredissue.path")))) {
                 assertEquals(expectedNumber, reader.lines().count());
-                File file = new File(propertiesTest.getProperty("filteredissue.path"));
-                file.delete();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+        File file = new File(propertiesTest.getProperty("filteredissue.path"));
+        file.delete();
     }
 
     @Test
     @Order(7)
     void testInvalidNameIssues() {
         Properties propertiesTest = (Properties) properties.clone();
-        propertiesTest.setProperty("issues.list.documents", "AA");
+        propertiesTest.setProperty("issues.list.documents", "AAA");
         propertiesTest.setProperty("filteredissue.path", propertiesTest.getProperty("filteredissue.path").replace(".csv", "AAtest.csv"));
         try {
             IssueFilter.getListAllIssues(propertiesTest);
@@ -219,7 +219,6 @@ class IssueFilterTest {
         } catch (InvalidNameException e) {
             e.printStackTrace();
         }
-        
     }
 
     @Test
@@ -242,11 +241,12 @@ class IssueFilterTest {
         try (BufferedReader reader = new BufferedReader(
             new FileReader(propertiesTest.getProperty("filteredissue.path")))) {
             assertEquals(1, reader.lines().count());
-            File file = new File(propertiesTest.getProperty("filteredissue.path"));
-            file.delete();
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        File file = new File(propertiesTest.getProperty("filteredissue.path"));
+        file.delete();
     }
 
     public List<String> getIDsFromDocument(String path){
