@@ -82,7 +82,6 @@ public class Predictor {
         try (BufferedReader br = Files.newBufferedReader(new File(filePath).toPath(), StandardCharsets.UTF_8)) {
             String line;
             Long i = 0L;
-            System.out.println(filePath);
             try (Stream<String> lines = Files.lines(Paths.get(filePath))) {
                 Long nLines = lines.count();// Does not count the last empty line
                 while ((line = br.readLine()) != null) {
@@ -164,7 +163,7 @@ public class Predictor {
             }
         } catch (IOException e) {
             e.printStackTrace();
-            System.err.println("Could not find \"PREDICT_ISSUES.csv\" file ");
+            System.err.println("Could not find file with the issues to be predicted");
         }
     }
 
@@ -176,9 +175,18 @@ public class Predictor {
             IndexSearcher searcher = new IndexSearcher(reader);
             IndexSearcher.setMaxClauseCount(Integer.valueOf(properties.getProperty("max.clause.count")));
             searcher.setSimilarity(new ClassicSimilarity());
-            String[] fields = { "title", "description" };
-            String[] queries = { escapeSpecialCharacters(issue.getTitle()),
-                    escapeSpecialCharacters(issue.getDescription()) };
+            String[] fields;
+            String[] queries;
+            // Since Descriptions can be an empty field(as seen in the generation of a report in eclipse),
+            // we need to check if is empty to not add it to the query
+            if (issue.getDescription().isEmpty()) {
+                fields = new String[] { "title" };
+                queries = new String[] { escapeSpecialCharacters(issue.getTitle().trim()) };
+            } else {
+                fields = new String[] { "title", "description" };
+                queries = new String[] { escapeSpecialCharacters(issue.getTitle().trim()),
+                    escapeSpecialCharacters(issue.getDescription().trim()) };
+            }
             Map<String, Float> boosts = Map.of("title", 1.0f, "description", 1.0f);
             MultiFieldQueryParser parser = new MultiFieldQueryParser(fields, analyzer, boosts);
             try {

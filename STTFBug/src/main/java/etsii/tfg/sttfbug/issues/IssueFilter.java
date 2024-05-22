@@ -37,12 +37,8 @@ public class IssueFilter {
         System.out.println("Issues to be processed: " + maxIssues);
         String filteredIssueFile = properties.getProperty("filteredissue.path");
         List<Issue> issuesList = new ArrayList<>();
-        boolean stop = false;
         Integer i = 0;
         for (String filePath : lfiles) {// We iterate through all given files
-            if (stop) {
-                break;
-            }
             try {
                 List<String> lines = Files.readAllLines(new File(filePath).toPath());
                 lines.remove(0);// Header line
@@ -56,7 +52,6 @@ public class IssueFilter {
                     printProgressBar(progress);
                     issuesList.add(issue);
                     if (issuesList.size() == maxIssues) {
-                        stop = true;
                         break;
                     }
                 }
@@ -68,13 +63,6 @@ public class IssueFilter {
         List<Issue> filteredIssues = filterIssues(issuesList, properties);
         System.out.println("Filtered issues list size: " + filteredIssues.size());
         System.out.println("Number of issues reopened:" + numberReopenedIssues);
-        StringBuilder csvContent = new StringBuilder();
-        csvContent.append("Reopened issues: "+numberReopenedIssues);
-        try {
-            FileUtils.writeStringToFile(new File(properties.getProperty("filteredissue.path").replace(".csv", "REOPENED.csv")), csvContent.toString(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         writeCSV(filteredIssues, filteredIssueFile);
     }
 
