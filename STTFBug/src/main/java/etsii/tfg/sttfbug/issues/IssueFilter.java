@@ -28,7 +28,7 @@ public class IssueFilter {
      * Creates a .csv file with a list of issues with the information we need for
      * the TTF estimator.
      */
-    public static void getListAllIssues(Properties properties) throws InvalidNameException{
+    public static void filterIssues(Properties properties) throws InvalidNameException{
         numberReopenedIssues = 0; // Resets the number of reopened issues everytime this method is called
         List<String> lfiles;
         lfiles = getlistFiles(properties.getProperty("issues.list.documents"), properties);
@@ -303,7 +303,7 @@ public class IssueFilter {
         List<Issue> filteredIssues = new ArrayList<>();
         for (Issue issue : issues) {
             if (isIssueValid(issue, properties)) {
-                if (isAValidTime(issue, properties)) {// This check has to be outside because of conflicts when
+                if (isValidTime(issue, properties)) {// This check has to be outside because of conflicts when
                                                       // comparing null values
                     filteredIssues.add(issue);
                 }
@@ -334,7 +334,7 @@ public class IssueFilter {
         }
     }
 
-    private static boolean isAValidTime(Issue issue, Properties properties) {
+    private static boolean isValidTime(Issue issue, Properties properties) {
         if (Boolean.parseBoolean(properties.getProperty("time.isvalid"))) {
             return issue.getStartDate().compareTo(issue.getEndDate()) < 0
                     && issue.getEndDate().compareTo(ZonedDateTime.now()) < 0

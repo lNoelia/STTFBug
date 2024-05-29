@@ -32,9 +32,9 @@ class IssueFilterTest {
         try (InputStream input = new FileInputStream("testconfig.properties")) {
             properties = new Properties();
             properties.load(input);
-            WebScraper.searchDocs(properties);
+            WebScraper.getAllIssuesDocuments(properties);
             try {
-                IssueFilter.getListAllIssues(properties);
+                IssueFilter.filterIssues(properties);
             } catch (InvalidNameException e) {
                 e.printStackTrace();
             }
@@ -102,12 +102,12 @@ class IssueFilterTest {
         propertiesTest.setProperty("notnull.EndDate", "false");
         propertiesTest.setProperty("time.isvalid", "false");
         try {
-            WebScraper.searchDocs(propertiesTest);
+            WebScraper.getAllIssuesDocuments(propertiesTest);
         } catch (IOException | InvalidNameException e) {
             e.printStackTrace();
         }
         try {
-            IssueFilter.getListAllIssues(propertiesTest);
+            IssueFilter.filterIssues(propertiesTest);
         } catch (InvalidNameException e) {
             e.printStackTrace();
         }
@@ -140,12 +140,12 @@ class IssueFilterTest {
         propertiesTest.setProperty("time.isvalid", "false");
         propertiesTest.setProperty("issues.max", "-10");
         try {
-            WebScraper.searchDocs(propertiesTest);
+            WebScraper.getAllIssuesDocuments(propertiesTest);
         } catch (IOException | InvalidNameException e) {
             e.printStackTrace();
         }
         try {
-            IssueFilter.getListAllIssues(propertiesTest);
+            IssueFilter.filterIssues(propertiesTest);
         } catch (InvalidNameException e) {
             e.printStackTrace();
         }
@@ -179,12 +179,12 @@ class IssueFilterTest {
         propertiesTest.setProperty("time.isvalid", "false");
         propertiesTest.setProperty("issues.max", "-1");
         try {
-            WebScraper.searchDocs(propertiesTest);
+            WebScraper.getAllIssuesDocuments(propertiesTest);
         } catch (IOException | InvalidNameException e) {
             e.printStackTrace();
         }
         try {
-            IssueFilter.getListAllIssues(propertiesTest);
+            IssueFilter.filterIssues(propertiesTest);
         } catch (InvalidNameException e) {
             e.printStackTrace();
         }
@@ -214,8 +214,8 @@ class IssueFilterTest {
         propertiesTest.setProperty("issues.list.documents", "AAA");
         propertiesTest.setProperty("filteredissue.path", propertiesTest.getProperty("filteredissue.path").replace(".csv", "AAtest.csv"));
         try {
-            IssueFilter.getListAllIssues(propertiesTest);
-            assertThrows(InvalidNameException.class, () -> WebScraper.searchDocs(properties));  
+            IssueFilter.filterIssues(propertiesTest);
+            assertThrows(InvalidNameException.class, () -> WebScraper.getAllIssuesDocuments(properties));  
         } catch (InvalidNameException e) {
             e.printStackTrace();
         }
@@ -228,12 +228,12 @@ class IssueFilterTest {
         propertiesTest.setProperty("issues.list.documents", "-U");
         propertiesTest.setProperty("filteredissue.path", propertiesTest.getProperty("filteredissue.path").replace(".csv", "-Utest.csv"));
         try {
-            WebScraper.searchDocs(propertiesTest);
+            WebScraper.getAllIssuesDocuments(propertiesTest);
         } catch (IOException | InvalidNameException e) {
             e.printStackTrace();
         }
         try {
-            IssueFilter.getListAllIssues(propertiesTest);
+            IssueFilter.filterIssues(propertiesTest);
         } catch (InvalidNameException e) {
             e.printStackTrace();
         }

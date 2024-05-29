@@ -23,7 +23,7 @@ public class Application {
             properties.load(input);
             Scanner scanner = new Scanner(System.in);
             while (true) {
-                Integer actionSelected = selectValue(scanner);
+                Integer actionSelected = selectAction(scanner);
                 System.out.println("Selected value: " + actionSelected);
                 switch (actionSelected) {
                     case 0:
@@ -32,20 +32,20 @@ public class Application {
                         return;
                     case 1:
                         try {
-                            WebScraper.searchDocs(properties);
+                            WebScraper.getAllIssuesDocuments(properties);
                         } catch (IOException | InvalidNameException e) {
                             e.printStackTrace();
                         } 
                         break;
                     case 2:
                         try {
-                            IssueFilter.getListAllIssues(properties);
+                            IssueFilter.filterIssues(properties);
                         } catch (InvalidNameException e) {
                             e.printStackTrace();
                         }
                         break;
                     case 3:
-                        Predictor.populateTrainingSet(properties);
+                        Predictor.predictListOfIssuesSet(properties);
                         break;
                     case 4:
                         Evaluator.evaluatePredictor(properties);
@@ -60,9 +60,9 @@ public class Application {
         }
     }
 
-    private static Integer selectValue(Scanner scanner) {
+    private static Integer selectAction(Scanner scanner) {
         Map<Integer, String> validValues = Map.of(0, "-> Stop execution",
-                1, "-> Obtain a .csv file with the list of issues",
+                1, "-> Obtain a list of .csv file with the list of issues of that type.",
                 2, "-> Obtain a .csv file with the issues filtered using the .properties file conditions",
                 3, "-> Populate the training and predict how long it will take to solve the given set of issues",
                 4, "-> Evaluate the predictor using cross-validation");

@@ -35,7 +35,7 @@ class WebScraperTest {
     @Test
     void positiveTestGetDocument(){
         try {
-            WebScraper.searchDocs(properties);
+            WebScraper.getAllIssuesDocuments(properties);
             String directory= properties.getProperty("eclipseissues.directorypath");
             for(String filestr: properties.getProperty("issues.list.documents").split(",")){
                 File file = new File(directory, filestr+".csv");
@@ -55,7 +55,7 @@ class WebScraperTest {
         properties.setProperty("url.main",
         "https://bugs.eclipse.org/bugs/report.cgi?x_axis_field=resolution&y_axis_field=bug_status&product=Platform&bug_status=CLOSED&resolution=FIXED&bug_id_type=any&chfield=bug_status&chfieldvalue=CLOSED&chfieldfrom=2001-10-15&chfieldto=2001-10-17&v1=&format=table&action=wrap");
         try {
-            WebScraper.searchDocs(properties);
+            WebScraper.getAllIssuesDocuments(properties);
             String directory= properties.getProperty("eclipseissues.directorypath");
             String filestr = "FU.csv";
             File file = new File(directory, filestr);
@@ -76,8 +76,8 @@ class WebScraperTest {
     void getDocumentInvalidLenghtName() {
         properties.setProperty("issues.list.documents", "FUF"); 
         try {
-            WebScraper.searchDocs(properties);
-            assertThrows(InvalidNameException.class, () -> WebScraper.searchDocs(properties));
+            WebScraper.getAllIssuesDocuments(properties);
+            assertThrows(InvalidNameException.class, () -> WebScraper.getAllIssuesDocuments(properties));
         } catch (IOException | InvalidNameException e) {
             assertEquals("Invalid name length in document FUF", e.getMessage());
         } 
@@ -87,8 +87,8 @@ class WebScraperTest {
     void getDocumentInvalidName() {
         properties.setProperty("issues.list.documents", "AA"); 
         try {
-            WebScraper.searchDocs(properties);
-            assertThrows(InvalidNameException.class, () -> WebScraper.searchDocs(properties));
+            WebScraper.getAllIssuesDocuments(properties);
+            assertThrows(InvalidNameException.class, () -> WebScraper.getAllIssuesDocuments(properties));
         } catch (IOException | InvalidNameException e) {
             assertEquals("Invalid letter combination in the name of the document AA", e.getMessage());
         } 

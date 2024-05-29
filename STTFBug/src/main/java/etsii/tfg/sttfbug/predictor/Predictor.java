@@ -44,7 +44,7 @@ import etsii.tfg.sttfbug.issues.IssueType;
 import etsii.tfg.sttfbug.issues.WebScraper;
 
 public class Predictor {
-    public static void populateTrainingSet(Properties properties) {
+    public static void predictListOfIssuesSet(Properties properties) {
         String[] stopWords = properties.getProperty("analyzer.stopwords").split(",");
         CharArraySet sWSet = new CharArraySet(Arrays.asList(stopWords), true);
         try (StandardAnalyzer analyzer = new StandardAnalyzer(sWSet)) {
@@ -58,7 +58,7 @@ public class Predictor {
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
-                }
+                  }
             }
             try (Directory dir = FSDirectory.open(Paths.get(luceneDirPath))) {
                 IndexWriterConfig config = new IndexWriterConfig(analyzer);
@@ -115,7 +115,7 @@ public class Predictor {
         }
     }
 
-    public static void predictTTFIssues(Properties properties, Directory dir, StandardAnalyzer analyzer) {
+    private static void predictTTFIssues(Properties properties, Directory dir, StandardAnalyzer analyzer) {
         List<List<HashMap<String, String>>> result = new ArrayList<>();
         String filePath = properties.getProperty("predict.issue.file"); // File where the issues to be predicted are
         try (BufferedReader br = Files.newBufferedReader(new File(filePath).toPath(), StandardCharsets.UTF_8)) {

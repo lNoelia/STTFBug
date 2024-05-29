@@ -18,7 +18,7 @@ public class WebScraper {
      *         the configuration file.
      * @throws InvalidNameException
      */
-    public static void searchDocs(Properties properties) throws IOException, InvalidNameException {
+    public static void getAllIssuesDocuments(Properties properties) throws IOException, InvalidNameException {
         String urlMain = properties.getProperty("url.main");
         List<String> listDocuments = List.of(properties.getProperty("issues.list.documents").split(","));
         for (String f : listDocuments) {

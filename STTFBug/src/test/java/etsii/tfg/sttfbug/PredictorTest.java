@@ -38,7 +38,7 @@ class PredictorTest {
     @Test
     @Order(1)
     void testPredictor() {
-        Predictor.populateTrainingSet(properties);
+        Predictor.predictListOfIssuesSet(properties);
         String resultFilePath = properties.getProperty("result.predictions.file");
         File file = new File(resultFilePath);
         assertTrue(file.exists() && file.isFile());
@@ -58,7 +58,7 @@ class PredictorTest {
     @Order(2)
     void testFileDoesntExist() {
         properties.setProperty("filteredissue.path", "nonexistentfile.csv");
-        Predictor.populateTrainingSet(properties);
+        Predictor.predictListOfIssuesSet(properties);
         String resultFilePath = properties.getProperty("result.predictions.file");
         File file = new File(resultFilePath);
         assertTrue(file.exists() && file.isFile());

@@ -80,7 +80,7 @@ public class Evaluator {
                 System.out.println("Number of issues for the training set: " + trainingSet.size());
                 System.out.println("Number of issues for the testing set: " + testSet.size());
 
-                populateTrainingSet(properties, trainingSet, testSet, fold, csvContent);
+                predictListOfIssuesSet(properties, trainingSet, testSet, fold, csvContent);
                 // Writing the prediction in the file
                 try {
                     FileUtils.writeStringToFile(new File(auxEvalPath), csvContent.toString(), StandardCharsets.UTF_8);
@@ -134,7 +134,7 @@ public class Evaluator {
         }
     }
 
-    public static List<List<String[]>> splitDataIntoFolds(List<String[]> data, int numFolds) {
+    private static List<List<String[]>> splitDataIntoFolds(List<String[]> data, int numFolds) {
         Collections.shuffle(data); // Shuffle the issues
         List<List<String[]>> folds = new ArrayList<>();
         int foldSize = data.size() / numFolds;
@@ -153,7 +153,7 @@ public class Evaluator {
      * evaluated
      * This way we can easily get all the training set for the current fold
      */
-    public static List<String[]> combineFolds(List<List<String[]>> folds, int excludeFoldIndex) {
+    private static List<String[]> combineFolds(List<List<String[]>> folds, int excludeFoldIndex) {
         List<String[]> combined = new ArrayList<>();
         for (int i = 0; i < folds.size(); i++) {
             if (i != excludeFoldIndex) {
@@ -163,7 +163,7 @@ public class Evaluator {
         return combined;
     }
 
-    private static void populateTrainingSet(Properties properties, List<String[]> trainingSet, List<String[]> testSet,
+    private static void predictListOfIssuesSet(Properties properties, List<String[]> trainingSet, List<String[]> testSet,
             Integer fold, StringBuilder csvContent) {
         // Preparing the Lucene directory
         String luceneDirPath = properties.getProperty("lucene.directorypath");// LUCENE DIRECTORY PATH
@@ -221,7 +221,7 @@ public class Evaluator {
         System.out.println("Populated training set");
     }
 
-    public static void predictTTFIssues(Properties properties, Directory dir, StandardAnalyzer analyzer,
+    private static void predictTTFIssues(Properties properties, Directory dir, StandardAnalyzer analyzer,
             List<String[]> testSet, Integer fold, StringBuilder csvContent) {
         List<List<HashMap<String, String>>> result = new ArrayList<>();
         String issueUrl = properties.getProperty("url.issue");
@@ -352,7 +352,7 @@ public class Evaluator {
         return data;
     }
 
-    public static boolean isBetweenPercentage(Float actualTime, Float diffValue, Properties properties) {
+    private static boolean isBetweenPercentage(Float actualTime, Float diffValue, Properties properties) {
         Float percentage = Float.valueOf(properties.getProperty("percentage.within"));
         Float lowerBound = actualTime - (actualTime * percentage);
         Float upperBound = actualTime + (actualTime * percentage);
