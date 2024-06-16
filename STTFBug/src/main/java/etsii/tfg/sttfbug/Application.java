@@ -1,39 +1,71 @@
 package etsii.tfg.sttfbug;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Comparator;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Scanner;
 
+import etsii.tfg.sttfbug.issues.InvalidNameException;
+import etsii.tfg.sttfbug.issues.IssueFilter;
 import etsii.tfg.sttfbug.issues.WebScraper;
+import etsii.tfg.sttfbug.predictor.Evaluator;
+import etsii.tfg.sttfbug.predictor.Predictor;
 
 public class Application {
 
     public static void main(String[] args) {
-        System.out.println("Hello World!");
-        Scanner scanner = new Scanner(System.in);
-        while(true){
-            Integer actionSelected = selectValue(scanner);
-            System.out.println("Selected value: "+ actionSelected);
-            switch(actionSelected){
-                case 0: System.out.println("Stopping execution");
+        Properties properties;
+        try (InputStream input = new FileInputStream("config.properties")) {
+            properties = new Properties();
+            properties.load(input);
+            Scanner scanner = new Scanner(System.in);
+            while (true) {
+                Integer actionSelected = selectAction(scanner);
+                System.out.println("Selected value: " + actionSelected);
+                switch (actionSelected) {
+                    case 0:
+                        System.out.println("Stopping execution");
                         scanner.close();
                         return;
-                case 1: try {
-                        WebScraper.searchDocs();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    } break;
-                case 2: WebScraper.getListAllIssues(); break;
-                default: throw new IllegalArgumentException("Unexpected value: " + actionSelected);
+                    case 1:
+                        try {
+                            WebScraper.getAllIssuesDocuments(properties);
+                        } catch (IOException | InvalidNameException e) {
+                            e.printStackTrace();
+                        } 
+                        break;
+                    case 2:
+                        try {
+                            IssueFilter.filterIssues(properties);
+                        } catch (InvalidNameException e) {
+                            e.printStackTrace();
+                        }
+                        break;
+                    case 3:
+                        Predictor.predictListOfIssuesSet(properties);
+                        break;
+                    case 4:
+                        Evaluator.evaluatePredictor(properties);
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Unexpected value: " + actionSelected);
+                }
             }
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            System.out.println("config.properties file not found");
         }
     }
-    private static Integer selectValue(Scanner scanner){
-        Map<Integer,String> validValues = Map.of(0,"-> Stop execution",
-        1,"-> Obtain a .csv file with the list of issues",
-        2,"-> Use the .csv files obtained to get the issues",
-        3,"-> This is a preview text");
+
+    private static Integer selectAction(Scanner scanner) {
+        Map<Integer, String> validValues = Map.of(0, "-> Stop execution",
+                1, "-> Obtain a list of .csv file with the list of issues of that type.",
+                2, "-> Obtain a .csv file with the issues filtered using the .properties file conditions",
+                3, "-> Populate the training and predict how long it will take to solve the given set of issues",
+                4, "-> Evaluate the predictor using cross-validation");
         System.out.printf("Select one of the following values: %n");
         printValidValues(validValues);
         Integer actionInteger;
@@ -52,11 +84,12 @@ public class Application {
             }
         }
         return actionInteger;
-        
+
     }
-    private static void printValidValues(Map<Integer,String> map){
+
+    private static void printValidValues(Map<Integer, String> map) {
         map.entrySet().stream()
-        .sorted(Comparator.comparing(Map.Entry::getKey))
-        .forEach(entry -> System.out.println(entry.getKey()+" "+entry.getValue()));
+                .sorted(Comparator.comparing(Map.Entry::getKey))
+                .forEach(entry -> System.out.println(entry.getKey() + " " + entry.getValue()));
     }
 }
