@@ -2,15 +2,28 @@
 
 ## Overview 
 
-  ToDo
+  Simple Time to Fix Bug is an application that obtains issues and bugs from Bugzilla's projects (in this case we use as an example Eclipse Platform), and predicts the time to fix of a given list of issues.
+
+  ### How do we predict the time to fix an issue?
+
+  First, we obtain the total list of "FIXED" issues on the repository, then we filter them with all the boolean parameters on the configuration file set to true and when we obtain the file with the filtered issues, we use the predictor module.
+  The predictor module uses Lucene to compare the similarity between the issue given to predict and the issues that we have obtained previously. In this case, we use the classic similarity approach, that implements a vector base approach(TF-IDF) and returns the k most similar issues and the mean of the time to fix, assuming that issues with a similiar title and description will have a similar time to fix.
 
 ## Features 
  
-  ToDo
+  This application contains the following features: 
+  * Web Scraping methods such as obtaining the indicated list of issues from the repository.
+  * Filter issues, where given a set of constraints selected on the configuration file
+  * Predict issues, where given a list of IDs of already created issues on the repository, we return the time to fix for each one of them
+  * Evaluate predictor, where given a list of filtered issues, it will evaluate the prediction method using cross-validation with 3, 5 and 7 folds.
 
 ## Usage 
 
-  ToDo
+  To use this app you will need to have Java Development Kit (in this case we have used the 17.0.9 version) and Maven (we used the 3.9.6 version). 
+  Steps to run the program:
+  * Step into the STTFBug folder 
+  * mvn compile
+  * mvn exec:java
 
 ## Tests
 
@@ -41,6 +54,8 @@ The config.properties file is used to config the various parameters given to the
 - max.clause.count: This value is the maximum number of clauses that lucene can handle. If the query is a longer text, you might need to increase this value.
 
 ### Non editable properties
+
+If you edit this properties to adapt the application to use another Bugzilla repository, the application may need some modification depending on the implementation of Bugzilla.
  
 - url.main: URL with table of issues by Resolution and status values.
 - url.issue: URL to issue details.
