@@ -287,7 +287,8 @@ public class Evaluator {
             try {
                 Query query = parser.parse(queries, fields, analyzer);
                 TopDocs topHits;
-                topHits = searcher.search(query, 3);
+                Integer k = Integer.valueOf(properties.getProperty("issues.neighbor"));
+                topHits = searcher.search(query, k);
                 ScoreDoc[] hits = topHits.scoreDocs;
                 for (int i = 0; i < hits.length; i++) { // For each neighbor
                     HashMap<String, String> result = new HashMap<>();
